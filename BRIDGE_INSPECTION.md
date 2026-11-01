@@ -191,3 +191,33 @@ For deeper authorized offline analysis, Il2CppDumper also generates
 Import `local-analysis/game.wasm` into a compatible Ghidra/WebAssembly
 environment, then inspect named handlers. This analysis has not yet been
 completed, so no working game modification is claimed.
+
+## Verify the WASM function-table mapping
+
+The user-provided Il2CppDumper output showed:
+
+- `SYBO.Subway.Game$$CoinManager_OnCoinCollected` at dumper address `0x2D0`, signature `viiii`
+- `SYBO.Subway.Coins.CoinManager$$RaiseOnCoinCollected` at `0x1989`, signature `vii`
+- `SYBO.Subway.Coins.CoinManager$$PickupCoin` at `0xC48`, signature `viii`
+- `SYBO.Subway.Game$$Die` at `0x182E`, signature `vii`
+
+Il2CppDumper's `ghidra_wasm.py` resolves its methods via symbols
+such as `func_viiii_720` within the WebAssembly `dynCall` namespace.
+The dumper address is **not** a safe raw file offset.
+
+An optional local read-only function table analyzer:
+
+```powershell
+git pull
+py tools/resolve_wasm_methods.py local-analysis/game.wasm local-analysis/dump/script.json
+```
+
+It attempts to correlate the dumper addresses with the WebAssembly
+element-section function table, function signatures, and body locations.
+It supports the older, simple active element segments typically emitted
+by Unity 2019/Emscripten; newer element encodings may require a different
+parser. The parser was tested on synthetic WASM but not yet on the
+commercial game's build.
+
+**Never patch at a dumper RVA or raw byte offset solely on the basis of
+this report.** No binary edit or runtime mod is included.
