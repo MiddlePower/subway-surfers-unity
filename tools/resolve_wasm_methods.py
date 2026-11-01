@@ -109,6 +109,7 @@ def analyze(binary):
     reader = Reader(binary, 8)
     types, func_type_indices, imported_count, tables, bodies = [], [], 0, {}, []
     local_types = []
+    exports = {}
     globals_by_index = []
     global_imports = []
     segments = 0
@@ -153,6 +154,13 @@ def analyze(binary):
                     raise ValueError(f'Unsupported WASM import kind {kind}')
         elif section_id == 3:  # functions
             local_types = vector(section)
+        elif section_id == 7:  # exported functions (including dynCall_ wrappers)
+            for _ in range(section.uint()):
+                export_name = section.name()
+                kind = section.byte()
+                index = section.uint()
+                if kind == 0:
+                    exports[export_name] = index
         elif section_id == 6:  # defined globals, evaluated when constant
             for _ in range(section.uint()):
                 value_type = section.byte()
@@ -197,7 +205,7 @@ def analyze(binary):
         raise ValueError('WASM function count does not match code bodies')
     diagnostics = {'element_section_present': element_section_present,
                    'segments': segments, 'unresolved_segments': unresolved_segments,
-                   'imported_globals': global_imports}
+                   'imported_globals': global_imports, 'exports': exports}
     return types, func_type_indices, imported_count, tables, bodies, diagnostics
 
 
