@@ -163,3 +163,31 @@ or an error message**, not the game's binaries. Even with a successful
 dump, identifying and altering a method in Unity WebGL can require
 additional analysis, and permission is needed to publish a modified
 commercial build.
+
+## Follow-up: confirm method signatures after a successful Il2CppDumper run
+
+The local `dump.cs` showed:
+
+- `SYBO.Subway.Game.CoinManager_OnCoinCollected(object, EventArgs)`, shown with `RVA 0x2D0`
+- `SYBO.Subway.Coins.CoinManager.RaiseOnCoinCollected()`, shown with `RVA 0x1989`
+
+**These RVAs are not reliable raw byte offsets in a WebAssembly module.**
+Do not modify `game.wasm` at these offsets.
+
+Il2CppDumper additionally writes a `script.json` with its method
+names and type signatures, suitable for later Ghidra correlation. Run:
+
+```powershell
+git pull
+py tools/find_coin_entrypoints.py local-analysis/dump/script.json
+```
+
+This prints the signatures and dumper addresses of likely coin-event and
+game-over methods. It performs **no** modifications.
+
+For deeper authorized offline analysis, Il2CppDumper also generates
+`ghidra_wasm.py`; its README documents use with
+[nneonneo/ghidra-wasm-plugin](https://github.com/nneonneo/ghidra-wasm-plugin).
+Import `local-analysis/game.wasm` into a compatible Ghidra/WebAssembly
+environment, then inspect named handlers. This analysis has not yet been
+completed, so no working game modification is claimed.
