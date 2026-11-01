@@ -268,3 +268,34 @@ py tools/resolve_dyncall_methods.py local-analysis/game.wasm local-analysis/dump
 If the wrapper instruction pattern differs from the expected Emscripten
 sequence, the tool prints a short diagnostic and recommends Ghidra
 instead of inventing a mapping. **Nothing is patched automatically.**
+
+## dynCall parser fix from real 2026-11-02 output
+
+The diagnostic output included a `dynCall_viiii` body ending in
+`local.get 0; i32.const mask; i32.and; i32.const base; i32.add; call_indirect`.
+The scanner previously stopped at `i32.add` instead of advancing to
+`call_indirect`. This is corrected on the experiment branch.
+
+The supplied wrapper bytes decode as:
+
+- `dynCall_viiii`: `mask = 0x1FFF`, `base = 113449`
+- `dynCall_vii`: `mask = 0x3FFF`, `base = 80275`
+- `dynCall_viii`: `mask = 0x3FFF`, `base = 96918`
+
+These are **table lookup parameters**, not locations to edit in the
+commercial game's binary. The fact that the exported `dynCall_viiii`
+has the type `viiiii` is expected: the exported wrapper accepts an
+extra function-pointer index parameter.
+
+Run the tests on the provided diagnostic bytes and then repeat the
+read-only mapping:
+
+```powershell
+git pull
+py -m unittest discover -s tools -p "test_*.py"
+py tools/resolve_dyncall_methods.py local-analysis/game.wasm local-analysis/dump/script.json
+```
+
+A `VERIFIED signature match` would confirm a signature-consistent
+candidate mapping only; it does **not** confirm the method semantics
+or implement coin-triggered game-over.
