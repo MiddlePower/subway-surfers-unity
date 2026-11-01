@@ -1,2 +1,7 @@
 # Local analysis of commercial Unity build (never commit extracted binaries)
 local-analysis/
+
+# Generated local-only WASM diagnostics (never commit or publish)
+nocoin-probe.html
+Build/SanFrancisco/SanFrancisco.probe.*.json
+Build/SanFrancisco/SanFrancisco.probe.*.wasm.code.unityweb
