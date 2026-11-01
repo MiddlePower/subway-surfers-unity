@@ -299,3 +299,58 @@ py tools/resolve_dyncall_methods.py local-analysis/game.wasm local-analysis/dump
 A `VERIFIED signature match` would confirm a signature-consistent
 candidate mapping only; it does **not** confirm the method semantics
 or implement coin-triggered game-over.
+
+## Experimental local-only no-coin patch
+
+The provided runtime output successfully identified:
+
+- \`SYBO.Subway.Game$$CoinManager_OnCoinCollected\` -> WASM function \`44591\` (\`viiii\`)
+- \`SYBO.Subway.Game$$Die\` -> WASM function \`44566\` (\`vii\`)
+
+The reversible script \`tools/patch_no_coin_local.py\` uses these *verified
+mappings* (it recalculates them from \`script.json\`, rather than relying on
+fixed indices). It generates a copy of the compiled WebAssembly with the
+coin-collected callback replaced by a call to \`Game.Die(this, null)\`.
+This is a hypothesis: it might fail in the actual game.
+
+Run from the **experiment branch** on your own machine:
+
+\`\`\`powershell
+git pull
+py -m unittest discover -s tools -p "test_*.py"
+py tools/patch_no_coin_local.py
+py tools/patch_no_coin_local.py --write
+\`\`\`
+
+The first patcher call is a dry run, and the second creates
+\`local-analysis/nocoin/SanFrancisco.wasm.code.unityweb\`.
+It does **not** overwrite the original asset.
+
+For a **private local test only**, back up the original file, then replace
+your local build's asset:
+
+\`\`\`powershell
+Copy-Item Build/SanFrancisco/SanFrancisco.wasm.code.unityweb local-analysis/original.wasm.code.unityweb
+Copy-Item local-analysis/nocoin/SanFrancisco.wasm.code.unityweb Build/SanFrancisco/SanFrancisco.wasm.code.unityweb -Force
+py -m http.server 8000
+\`\`\`
+
+Open \`http://localhost:8000/?inspect=1\` in a fresh private browser window
+to avoid cached WebGL files. Start a run and collect exactly one coin.
+Check whether gameplay immediately ends, crashes, or behaves normally.
+
+Restore the unmodified source file afterward:
+
+\`\`\`powershell
+Copy-Item local-analysis/original.wasm.code.unityweb Build/SanFrancisco/SanFrancisco.wasm.code.unityweb -Force
+\`\`\`
+
+If the original file was not backed up, and it was originally unchanged
+in your repository, \`git restore -- Build/SanFrancisco/SanFrancisco.wasm.code.unityweb\`
+can restore it instead.
+
+**Important:** This is an experimental modification of a commercial build
+whose repository does not grant redistribution rights. Do not publish,
+commit, share or host the modified assets; a public no-coin website
+would require an authorized game build or an independently created,
+properly licensed runner.
