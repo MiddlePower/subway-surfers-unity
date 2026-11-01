@@ -63,3 +63,31 @@ permission grant located in the repository**. Owning or forking the GitHub
 repository does not grant rights to modify or publicly redistribute the
 underlying game. Do not publish or host the compiled assets without the
 appropriate authorization.
+
+## After the initial bridge experiment: inspect the data archive
+
+The original Poki SDK test did **not** show per-coin events. The next
+read-only experiment examines the Unity WebGL asset archive itself.
+
+On Windows, from the checked-out experiment branch, run:
+
+```powershell
+py -m pip install brotli
+py tools/inspect_unityweb.py Build/SanFrancisco/SanFrancisco.data.unityweb
+```
+
+This prints the files contained in the decompressed WebGL data archive,
+marks likely metadata files, and counts occurrences of terms such as
+`Coin` and `Collect`. No Unity assets are changed or extracted. To
+save the output to a small text file:
+
+```powershell
+py tools/inspect_unityweb.py Build/SanFrancisco/SanFrancisco.data.unityweb > inspection-report.txt
+```
+
+**Send back the text output**, not the compiled game files. The report
+helps determine whether the next feasible step is metadata analysis
+or whether the only editable options are outside the game.
+
+**Important:** Metadata inspection is not the same as modifying the
+compiled WebAssembly. We have not found or patched the coin handler yet.
