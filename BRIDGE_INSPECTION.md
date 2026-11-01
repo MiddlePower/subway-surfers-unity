@@ -354,3 +354,48 @@ whose repository does not grant redistribution rights. Do not publish,
 commit, share or host the modified assets; a public no-coin website
 would require an authorized game build or an independently created,
 properly licensed runner.
+
+## If the no-coin game patch appears to have no effect
+
+The earlier experimental patch changed
+\`SYBO.Subway.Game$$CoinManager_OnCoinCollected\`. If picking up coins still
+works normally, there are at least two possibilities:
+
+- The Unity loader is still using a cached WASM asset.
+- The \`Game.CoinManager_OnCoinCollected\` handler is not actually being
+  executed in the normal pickup path.
+
+The diagnostic \`tools/probe_coin_hook.py\` distinguishes these cases
+without touching the existing \`index.html\`, Unity config, or WASM asset.
+It creates a uniquely named \`nocoin-probe.html\` entry point, unique JSON
+config, and unique compiled WASM asset. The unique URLs avoid reusing the
+previously cached build files.
+
+\`\`\`powershell
+git pull
+py tools/probe_coin_hook.py --status
+py tools/probe_coin_hook.py --hook coin-pickup
+py -m http.server 8000
+\`\`\`
+
+Open **http://localhost:8000/nocoin-probe.html?inspect=1** in a fresh
+private browser session. During gameplay, deliberately pick up one coin.
+
+**Expected diagnostic behavior:** if \`Coin.Pickup\` executes, the
+modified WASM intentionally throws an \`unreachable\` error and the
+game will probably freeze/stop. This is *only a test*, not a finished
+end-of-run implementation.
+
+- If it freezes **only upon coin collection**, the pickup path is
+  verified. That would suggest the earlier handler is unused or the
+  direct \`Game.Die\` call did not work.
+- If it runs normally, press F12 → **Network**, reload the probe page
+  (Ctrl+Shift+R), and check whether the requested filename begins with
+  \`SanFrancisco.probe.coin-pickup.\`. Check for a 200 response and
+  share browser Console errors.
+- If the unique WASM loads but the coin still has no effect, try
+  \`--hook coin-manager-pickup\` or \`--hook coin-event\` and retest.
+
+The output page and probe assets are ignored by git; do not commit or
+redistribute any of these commercial game files. Open normal
+\`http://localhost:8000/\` to play without the diagnostic probe page.
