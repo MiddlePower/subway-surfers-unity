@@ -64,6 +64,7 @@ def candidate_dyncall_indirections(wasm, function_id, imports, bodies):
                         op = r.byte()
                         if op != 0x6A:  # i32.add
                             continue
+                        op = r.byte()  # advance past i32.add to call_indirect
                     elif op != 0x11:
                         continue
                 elif op == 0x6A:  # i32.add (no mask)
