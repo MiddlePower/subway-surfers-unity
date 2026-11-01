@@ -245,3 +245,26 @@ py tools/resolve_wasm_methods.py local-analysis/game.wasm local-analysis/dump/sc
 If the result remains zero, include the new `Element section present`
 and `Imported globals` lines in the output. Do not infer any executable
 file offset directly from the Il2CppDumper addresses.
+
+## Corrected mapping: Emscripten dynCall signature groups
+
+The direct table mapping found 125,739 entries, but method signatures
+did **not** match. This is expected when Emscripten allocates groups of
+function-table slots by call signature and `dynCall_*` wrappers apply an
+offset and bitmask. The Ghidra WASM plugin's
+[`analyze_dyncalls.py`](https://github.com/nneonneo/ghidra-wasm-plugin/blob/master/ghidra_scripts/analyze_dyncalls.py)
+documents this behavior.
+
+The next local read-only command searches WASM exports for the relevant
+`dynCall_*` wrappers, derives candidate masks and offsets from their
+short `call_indirect` sequences, and checks the actual resolved function
+type before reporting any verified method:
+
+```powershell
+git pull
+py tools/resolve_dyncall_methods.py local-analysis/game.wasm local-analysis/dump/script.json
+```
+
+If the wrapper instruction pattern differs from the expected Emscripten
+sequence, the tool prints a short diagnostic and recommends Ghidra
+instead of inventing a mapping. **Nothing is patched automatically.**
