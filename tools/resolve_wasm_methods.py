@@ -76,17 +76,26 @@ def limits(reader):
         reader.uint()
 
 
-def expression(reader):
+def expression(reader, globals_by_index):
     op = reader.byte()
     if op == 0x41:  # i32.const
         value = reader.sint()
-    elif op == 0x23:  # global.get; runtime address unknown
-        reader.uint()
+    elif op == 0x23:  # global.get (may refer to an imported tableBase)
+        index = reader.uint()
+        value = globals_by_index[index] if index < len(globals_by_index) else None
+    elif op == 0x42:  # i64.const
+        reader.sint(64)
+        value = None
+    elif op == 0x43:  # f32.const
+        reader.read(4)
+        value = None
+    elif op == 0x44:  # f64.const
+        reader.read(8)
         value = None
     else:
-        raise ValueError(f'Unsupported element offset opcode: 0x{op:X}')
+        raise ValueError(f'Unsupported constant-expression opcode: 0x{op:X}')
     if reader.byte() != 0x0B:
-        raise ValueError('Unexpected WASM element offset expression')
+        raise ValueError('Unexpected WASM constant expression')
     return value
 
 
@@ -100,6 +109,11 @@ def analyze(binary):
     reader = Reader(binary, 8)
     types, func_type_indices, imported_count, tables, bodies = [], [], 0, {}, []
     local_types = []
+    globals_by_index = []
+    global_imports = []
+    segments = 0
+    unresolved_segments = 0
+    element_section_present = False
     while reader.pos < reader.end:
         section_id = reader.byte()
         section_size = reader.uint()
@@ -116,8 +130,8 @@ def analyze(binary):
                 types.append((params, results))
         elif section_id == 2:  # imports
             for _ in range(section.uint()):
-                section.name()
-                section.name()
+                module = section.name()
+                name = section.name()
                 kind = section.byte()
                 if kind == 0:
                     func_type_indices.append(section.uint())
@@ -128,22 +142,35 @@ def analyze(binary):
                 elif kind == 2:
                     limits(section)
                 elif kind == 3:
-                    section.byte()  # value type
+                    value_type = section.byte()
                     section.byte()  # mutable bit
+                    # Confirmed in the Unity Emscripten JS loader:
+                    # env["tableBase"] = 0.
+                    is_table_base = module == 'env' and name == 'tableBase' and value_type == 0x7F
+                    globals_by_index.append(0 if is_table_base else None)
+                    global_imports.append(f'{module}.{name}' + (' = 0' if is_table_base else ' = unknown'))
                 else:
                     raise ValueError(f'Unsupported WASM import kind {kind}')
         elif section_id == 3:  # functions
             local_types = vector(section)
-        elif section_id == 9:  # function table initialization
+        elif section_id == 6:  # defined globals, evaluated when constant
             for _ in range(section.uint()):
+                value_type = section.byte()
+                section.byte()  # mutable bit
+                const = expression(section, globals_by_index)
+                globals_by_index.append(const if value_type == 0x7F else None)
+        elif section_id == 9:  # function table initialization
+            element_section_present = True
+            for _ in range(section.uint()):
+                segments += 1
                 flag = section.uint()
                 if flag == 0:
                     table = 0
-                    base = expression(section)
+                    base = expression(section, globals_by_index)
                     elements = vector(section)
                 elif flag == 2:
                     table = section.uint()
-                    base = expression(section)
+                    base = expression(section, globals_by_index)
                     section.byte()  # elem kind
                     elements = vector(section)
                 elif flag in (1, 3):  # passive or declarative
@@ -153,6 +180,7 @@ def analyze(binary):
                 else:
                     raise ValueError(f'Unsupported newer WASM element segment flag: {flag}')
                 if base is None:
+                    unresolved_segments += 1
                     continue
                 for n, fidx in enumerate(elements):
                     tables[(table, base + n)] = fidx
@@ -167,7 +195,10 @@ def analyze(binary):
     func_type_indices.extend(local_types)
     if bodies and len(bodies) != len(local_types):
         raise ValueError('WASM function count does not match code bodies')
-    return types, func_type_indices, imported_count, tables, bodies
+    diagnostics = {'element_section_present': element_section_present,
+                   'segments': segments, 'unresolved_segments': unresolved_segments,
+                   'imported_globals': global_imports}
+    return types, func_type_indices, imported_count, tables, bodies, diagnostics
 
 
 def signature(sig):
@@ -177,8 +208,15 @@ def signature(sig):
 
 
 def report(wasm, script):
-    types, func_types, imports, tables, bodies = analyze(wasm)
+    types, func_types, imports, tables, bodies, diagnostics = analyze(wasm)
     print(f'WASM: {len(func_types):,} functions ({imports:,} imported), {len(tables):,} initialized table slots')
+    print('Element section present:', diagnostics['element_section_present'],
+          '| segments:', diagnostics['segments'],
+          '| unresolved offset segments:', diagnostics['unresolved_segments'])
+    if diagnostics['imported_globals']:
+        print('Imported globals:', ', '.join(diagnostics['imported_globals'][:20]))
+    if not tables:
+        print('No resolved table slots. Table offsets might depend on runtime globals or dynamic initialization.')
     methods = script.get('ScriptMethod', [])
     for needle in TARGETS:
         found = [m for m in methods if m.get('Name') == needle]
