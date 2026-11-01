@@ -110,3 +110,56 @@ Unity 2019 IL2CPP version-24 structure. It **does not patch** the game.
 
 Copy the printed text output into the conversation to evaluate which
 candidate names are relevant. Do not upload commercial game binaries.
+
+## Confirmed game-specific symbols
+
+The IL2CPP symbol output provided from the locally extracted metadata
+identified these likely coin-related handlers:
+
+- `SYBO.Subway.Coins.Coin.Pickup`
+- `SYBO.Subway.Coins.CoinManager.PickupCoin`
+- `SYBO.Subway.Coins.CoinManager.RaiseOnCoinCollected`
+- `SYBO.Subway.Game.CoinManager_OnCoinCollected`
+- `GameStats.add_OnCoinsIncreased`
+
+These are **names from metadata**. They are not JavaScript events,
+callable browser APIs, or recovered C# implementations.
+
+### Next: correlate with compiled WebAssembly
+
+The metadata alone cannot locate or change the executable handler. A
+compatible IL2CPP utility needs both metadata and the compiled WebAssembly
+module. To prepare them **locally** without modifying the original files:
+
+```powershell
+git pull
+py -m pip install brotli
+py tools/prepare_il2cpp_analysis.py
+```
+
+This creates:
+
+- `local-analysis/global-metadata.dat`
+- `local-analysis/game.wasm`
+
+The output directory is ignored by git. Do not upload or commit these
+extracted commercial game files. The script does not patch game behavior.
+
+A possible next analysis tool is
+[Perfare/Il2CppDumper](https://github.com/Perfare/Il2CppDumper),
+which documents WebAssembly and metadata support. Its success on this
+specific build is not verified. If it supports the build, the command-line
+form is:
+
+```powershell
+Il2CppDumper.exe local-analysis/game.wasm local-analysis/global-metadata.dat local-analysis/dump
+```
+
+Then inspect the generated `dump.cs` for
+`CoinManager_OnCoinCollected` and `RaiseOnCoinCollected`.
+
+Please share **a short text excerpt of the method signatures / addresses
+or an error message**, not the game's binaries. Even with a successful
+dump, identifying and altering a method in Unity WebGL can require
+additional analysis, and permission is needed to publish a modified
+commercial build.
