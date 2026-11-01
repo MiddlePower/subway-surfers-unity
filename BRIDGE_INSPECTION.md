@@ -91,3 +91,22 @@ or whether the only editable options are outside the game.
 
 **Important:** Metadata inspection is not the same as modifying the
 compiled WebAssembly. We have not found or patched the coin handler yet.
+
+## IL2CPP class/method name scan
+
+The archive listing confirmed that `global-metadata.dat` exists and has
+coin-related strings. To distinguish actual **class and method names** from
+arbitrary text matches, run:
+
+```powershell
+git pull
+py tools/inspect_coin_symbols.py Build/SanFrancisco/SanFrancisco.data.unityweb --limit 100
+```
+
+The scanner reads the already confirmed metadata archive and tries to list
+qualified class names with coin/pickup/collection/scoring methods. It also
+prints matching strings if the metadata records do not match the expected
+Unity 2019 IL2CPP version-24 structure. It **does not patch** the game.
+
+Copy the printed text output into the conversation to evaluate which
+candidate names are relevant. Do not upload commercial game binaries.
