@@ -221,3 +221,27 @@ commercial game's build.
 
 **Never patch at a dumper RVA or raw byte offset solely on the basis of
 this report.** No binary edit or runtime mod is included.
+
+## Table mapping follow-up: zero initialized slots
+
+A first run of `resolve_wasm_methods.py` showed 72,441 functions,
+481 imports and **zero resolved table entries** for the named coin
+handlers. That result does not establish that the methods are absent.
+
+The Unity/Emscripten JavaScript bootstrap creates the indirect function
+table and sets `env.tableBase = 0`. The earlier analyzer silently
+ignored element sections with `global.get` offset expressions, even
+when they referenced that imported base.
+
+The updated analyzer interprets the confirmed `env.tableBase` import
+and prints counts for total and unresolved element segments plus global
+import names, to make remaining unsupported layouts explicit.
+
+```powershell
+git pull
+py tools/resolve_wasm_methods.py local-analysis/game.wasm local-analysis/dump/script.json
+```
+
+If the result remains zero, include the new `Element section present`
+and `Imported globals` lines in the output. Do not infer any executable
+file offset directly from the Il2CppDumper addresses.
