@@ -274,3 +274,39 @@ button:focus-visible, a:focus-visible {
   html { scroll-behavior: auto; }
   .fullscreen-button,.scroll-prompt { transition: none; }
 }
+
+/* Fullscreen is a clean gameplay-only view. Keep the exit hitbox present,
+   but hide its appearance until the cursor reaches its top-right position.
+   Keyboard focus also reveals it for accessibility. */
+#challenge-stage:fullscreen .brand-lockup,
+#challenge-stage:fullscreen .scroll-prompt,
+#challenge-stage:-webkit-full-screen .brand-lockup,
+#challenge-stage:-webkit-full-screen .scroll-prompt {
+  display: none !important;
+}
+#challenge-stage:fullscreen .stage-header,
+#challenge-stage:-webkit-full-screen .stage-header {
+  background: none !important;
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+  padding-right: max(12px, env(safe-area-inset-right)) !important;
+  padding-bottom: 0 !important;
+  justify-content: flex-end;
+}
+#challenge-stage:fullscreen .fullscreen-button,
+#challenge-stage:-webkit-full-screen .fullscreen-button {
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity 150ms ease-out, border-color 150ms ease-out;
+}
+#challenge-stage:fullscreen .fullscreen-button:hover,
+#challenge-stage:fullscreen .fullscreen-button:focus-visible,
+#challenge-stage:-webkit-full-screen .fullscreen-button:hover,
+#challenge-stage:-webkit-full-screen .fullscreen-button:focus-visible {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  #challenge-stage:fullscreen .fullscreen-button,
+  #challenge-stage:-webkit-full-screen .fullscreen-button {
+    transition: none;
+  }
+}
