@@ -70,7 +70,11 @@
       }
     }
   }
-  const STORAGE_KEY = 'no-coin-challenge.records.v1';
+  // Blitz is a different speed/difficulty: retain all existing normal
+  // personal bests, but keep new Blitz records in a distinct local key.
+  const STORAGE_KEY = blitzMode === 'on'
+    ? 'no-coin-challenge.records.blitz.v1'
+    : 'no-coin-challenge.records.v1';
   const HISTORY_LIMIT = 40;
   let runInProgress = false;
   let storageAvailable = true;
@@ -209,8 +213,9 @@
       storageNote.textContent =
         'Browser storage is unavailable. These scores will disappear when the page reloads.';
     } else {
-      storageNote.textContent =
-        'Saved in this browser only. Private/incognito windows may erase records when closed.';
+      storageNote.textContent = blitzMode === 'on'
+        ? 'Blitz personal records are separate from normal speed. Saved in this browser only.'
+        : 'Saved in this browser only. Private/incognito windows may erase records when closed.';
     }
   }
 
