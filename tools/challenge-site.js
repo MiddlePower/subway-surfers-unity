@@ -20,6 +20,29 @@
   const historyNode = document.getElementById('run-history');
   const storageNote = document.getElementById('storage-message');
   const isChallenge = document.body?.dataset.runMode === 'no-coin';
+  const coinMode = document.body?.dataset.coinMode || 'game-over';
+  const coinModeTarget = document.body?.dataset.coinModeTarget;
+  const challengeSettings = document.getElementById('challenge-settings');
+  const coinModeToggle = document.getElementById('coin-mode-toggle');
+  const coinModeDescription = document.getElementById('coin-mode-description');
+
+  // Changing the compiled Unity rule requires loading its companion private
+  // test build. Both game pages share the same browser-local records.
+  if (challengeSettings && coinModeToggle && coinModeDescription) {
+    challengeSettings.hidden = !isChallenge || !coinModeTarget;
+    if (isChallenge && coinModeTarget) {
+      coinModeToggle.href = coinModeTarget;
+      if (coinMode === 'timer-only') {
+        coinModeToggle.textContent = 'Restore coin = game over';
+        coinModeDescription.textContent =
+          'Coin pickup freezes your timer, but the runner keeps going. Your first coin is your final challenge time.';
+      } else {
+        coinModeToggle.textContent = 'Coin = stop timer only';
+        coinModeDescription.textContent =
+          'Coin pickup ends the run. Switch modes to let the game continue after your timer stops.';
+      }
+    }
+  }
   const STORAGE_KEY = 'no-coin-challenge.records.v1';
   const HISTORY_LIMIT = 40;
   let runInProgress = false;
