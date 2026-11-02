@@ -640,3 +640,46 @@ a browser test with the user's local game build.
 
 The generated alternative game assets remain ignored by Git. Do not
 commit or publicly deploy them without redistribution rights.
+
+## Fullscreen clean view (hide branding, records prompt, exit control on hover)
+
+The Unity game section's native browser fullscreen mode now hides the
+\`NO-COIN CHALLENGE\` page branding and the \`YOUR BEST SCORE\` arrow/link.
+It also removes the header gradient. The game and stopwatch remain visible.
+
+The \`Exit fullscreen\` button remains in the top-right corner as an
+invisible hit target and appears only when you hover over that button,
+or focus it with keyboard navigation. The browser's \`Esc\` key also
+exits fullscreen. This uses CSS fullscreen selectors and **does not**
+modify the game's rendering or WASD controls.
+
+Test the CSS contract (Node.js optional):
+
+\`\`\`powershell
+node tools/test_fullscreen_ui.cjs
+\`\`\`
+
+## Unlockables and inventory investigation (not yet patched)
+
+The user also requested all character skins unlocked and **1,000,000,000**
+of the game's boards/hoverboards, score boosters, headstarts, and blue
+keys. These are stored in game-specific IL2CPP data, not in the
+challenge website's local best-time storage. Browser overlay changes
+alone cannot alter genuine Unity ownership/item counts.
+
+The local read-only \`tools/inspect_unlocks.py\` script searches the
+Il2CppDumper \`script.json\` and \`dump.cs\` for relevant ownership,
+consumable and currency methods and fields:
+
+\`\`\`powershell
+git pull
+py tools/inspect_unlocks.py --category skins --category boards --category boosters --category headstarts
+py tools/inspect_unlocks.py --category currency --category storage
+\`\`\`
+
+These commands list candidate method names/signatures and field
+details. **They do not unlock or add anything yet.** Examining that
+output is necessary to avoid inventing ownership methods or damaging
+local save data. Any future patch should apply only to the user's
+private local build, with a save backup and no deployment of
+unauthorized commercial assets.
