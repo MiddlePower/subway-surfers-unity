@@ -351,12 +351,17 @@ def select_hoverboard_hook(script, wasm, metadata, records, explicit=None):
             if len(spends) == 1:
                 candidate, route = spends[0], "consumption"
             else:
-                print("WARNING: No unambiguous hoverboard activation/consumption hook.")
-                print("Potential names in your build (for follow-up analysis):")
-                for method in suggestions[:25]:
+                # Some versions implement item consumption by calling
+                # IncreaseAmount(type, -quantity) instead of DecreaseAmount.
+                # Hook only calls where type==hoverboard and delta<0.
+                candidate = next(m for m in script["ScriptMethod"]
+                                 if m.get("Name") == METHODS["amount_add"][0])
+                route = "negative-increase"
+                print("No direct hoverboard activation hook found. "
+                      "Using negative hoverboard inventory delta as fallback.")
+                print("Other candidate methods:")
+                for method in suggestions[:15]:
                     print(" -", method.get("Name"), method.get("TypeSignature"))
-                print("Hoverboard-specific automatic timer stop NOT YET ACTIVE.")
-                return None
 
     name = candidate["Name"]
     expected_sig = candidate.get("TypeSignature")
@@ -369,12 +374,12 @@ def select_hoverboard_hook(script, wasm, metadata, records, explicit=None):
     if actual != expected_sig or index < imports or not actual.startswith("v"):
         raise RuntimeError(
             f"Hoverboard hook signature mismatch: {name}: {actual}/{expected_sig}")
-    if route == "consumption":
+    if route in ("consumption", "negative-increase"):
         # Only stop for UpgradeType.hoverboard == 1, never for unrelated
-        # powerups bought/consumed via the same method.
+        # powerups. Negative IncreaseAmount values indicate consumption.
         verify_parameter_types(records, name, ("UpgradeType", "int"))
         if actual != "viii":
-            raise RuntimeError("Expected DecreaseAmount(UpgradeType,int) -> viii")
+            raise RuntimeError("Expected inventory delta (UpgradeType,int) -> viii")
     print("Hoverboard event source:", name, "(route:", route, "signature:", actual + ")")
     return index, len(types[type_ids[index]][0]), route
 
@@ -383,11 +388,13 @@ def patch_hoverboard_event(wasm, hook, import_index, imports):
     if not hook:
         return wasm
     func_index, parameters, route = hook
-    if route == "consumption":
-        # InventorySave.DecreaseAmount(UpgradeType type, int amount):
-        # send the event only for type==hoverboard (1).
-        event = (b"\x20\x00" + b"\x41\x01\x46" +
-                 b"\x04\x40" +
+    if route in ("consumption", "negative-increase"):
+        # Inventory method gets UpgradeType in local[0], amount in local[1].
+        # In a negative-increase fallback, require delta<0 too.
+        test = b"\x20\x00\x41\x01\x46"   # type == hoverboard(1)
+        if route == "negative-increase":
+            test += b"\x20\x01\x41\x00\x48\x71"  # amount < 0 and
+        event = (test + b"\x04\x40" +
                  marker_instruction(import_index, HOVERBOARD_MARKER) +
                  b"\x0b")
     else:
