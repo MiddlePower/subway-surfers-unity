@@ -399,3 +399,31 @@ end-of-run implementation.
 The output page and probe assets are ignored by git; do not commit or
 redistribute any of these commercial game files. Open normal
 \`http://localhost:8000/\` to play without the diagnostic probe page.
+
+## Result: coin pickup trap executed during gameplay
+
+The user confirmed that the \`--hook coin-pickup\` diagnostic
+**froze/crashed immediately upon collecting a coin**. This establishes
+that \`SYBO.Subway.Coins.Coin.Pickup\` is an active gameplay path in
+this build, and that the cache-busted local build loaded the diagnostic.
+
+The previous no-coin experiment patched
+\`Game.CoinManager_OnCoinCollected\`, and normal gameplay continued.
+That does not prove whether it was unused or whether its attempted
+\`Game.Die\` call failed.
+
+To implement a *clean* run-ending action at \`Coin.Pickup\`, the patched
+code would need the **live \`SYBO.Subway.Game\` instance**; passing the
+\`Coin\` object as the Game instance would be incorrect. Before writing
+another game patch, inspect the recovered Game fields, properties and
+singleton accessors:
+
+\`\`\`powershell
+git pull
+py tools/inspect_game_instance.py local-analysis/dump/dump.cs local-analysis/dump/script.json
+\`\`\`
+
+Share the text output (not compiled commercial game files). This is a
+read-only scanner. Until the Game instance can be reliably obtained and
+a clean game-over path tested, the diagnostic trap is **not a playable
+No-Coin Challenge**.
