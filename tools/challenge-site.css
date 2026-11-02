@@ -326,3 +326,21 @@ button:focus-visible, a:focus-visible {
   .challenge-settings { flex-direction: column; align-items: stretch; gap: 18px; padding: 22px; }
   .mode-toggle { width: 100%; }
 }
+
+/* Blitz and coin mode are independent game builds. */
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+  min-width: 240px;
+}
+.mode-toggle[hidden] { display: none !important; }
+.blitz-toggle {
+  background: #f2c75f;
+  color: #24200d;
+}
+.blitz-toggle:hover { background: #ffdb7b; }
+@media (max-width: 750px) {
+  .settings-actions { width: 100%; min-width: 0; }
+}
