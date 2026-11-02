@@ -427,3 +427,54 @@ Share the text output (not compiled commercial game files). This is a
 read-only scanner. Until the Game instance can be reliably obtained and
 a clean game-over path tested, the diagnostic trap is **not a playable
 No-Coin Challenge**.
+
+## Confirmed Game singleton accessor; clean private no-coin test
+
+The user-provided IL2CPP metadata shows:
+
+- \`SYBO.Subway.Game\` contains \`private static Game instance\`
+- \`SYBO.Subway.Game$$get_Instance\` returns a \`Game*\` (\`ii\` WASM signature)
+- \`SYBO.Subway.Game$$Die\` accepts \`Game*\` plus method metadata (\`vii\`)
+- The \`Coin.Pickup\` method was confirmed to execute on player coin pickup
+  using the crash diagnostic.
+
+The new \`tools/try_nocoin_gameover.py\` generates an **isolated** game
+page that replaces \`Coin.Pickup\` with these calls:
+
+\`\`\`text
+Game* game = Game.get_Instance(null);
+Game.Die(game, null);
+\`\`\`
+
+These are conceptual pseudocode; the script actually emits WebAssembly
+\`call\` instructions and verifies method names and signatures from the
+existing \`script.json\`. Unlike the first experiment, this calls
+\`Die\` with an actual Game instance instead of relying on the
+\`Game.CoinManager_OnCoinCollected\` event handler.
+
+### Test procedure
+
+From the repository root on the experiment branch:
+
+\`\`\`powershell
+git pull
+py -m unittest discover -s tools -p "test_*.py"
+py tools/try_nocoin_gameover.py
+py tools/try_nocoin_gameover.py --write
+py -m http.server 8000
+\`\`\`
+
+Open **http://localhost:8000/nocoin-gameover.html?inspect=1** in a new
+private/incognito window. Start a run and collect a coin. The desired
+result is the game's normal death/game-over flow rather than a WASM
+\`unreachable\` error. If it freezes or continues normally, use browser
+DevTools Console to capture the error and report what happened.
+
+The unique test page, config and WASM asset are ignored by git. The
+original \`index.html\`, original Unity JSON and original compiled asset
+are untouched. The code was unit-tested on synthetic data, **not**
+validated during a live run of this commercial game.
+
+The commercial build's redistribution rights have not been established.
+Do not publish or upload any modified game files to a public website
+without appropriate authorization.
