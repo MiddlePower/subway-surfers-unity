@@ -576,3 +576,67 @@ node tools/test_run_timer.cjs
 The mocked runtime tests have been checked; **the overlay still needs
 a user-side test in the live Unity game** to confirm the precise timing
 of its SDK game-over event.
+
+## Fullscreen landing page, personal-best time and scrollable sections
+
+The root \`index.html\` is now a simple extensible challenge website:
+
+- **Full-viewport game** at the top (\`#challenge-stage\`) with a native
+  browser Fullscreen button.
+- **Scrollable personal-records section** (\`#records\`) immediately
+  underneath, including best time, last completed time, run count and
+  recent run history.
+- \`#future-features\` / \`#challenge-modules\` placeholders for
+  future modules; placeholders are visibly labeled as future work.
+- The diagnostics overlay is gone: the HTML no longer loads
+  \`tools/bridge-inspector.js\`. The diagnostic source remains in
+  \`tools/\` for isolated future investigations, but there is no log on
+  the game page, even if \`?inspect=1\` is present.
+
+The commercial Unity loader hardcodes \`html, body {overflow:hidden}\`
+and absolutely positions its \`#game-container\` using viewport-sized
+negative margins. \`tools/challenge-site.css\` overrides this, and
+\`tools/challenge-site.js\` moves the injected Unity loader and game
+nodes into \`#challenge-game\` via \`MutationObserver\`. The actual
+Unity binary remains the same as the previously working No-Coin test.
+
+The timer publishes \`runner-timer-state\` on run start/finish.
+\`tools/challenge-site.js\` saves completed **survival time** to the
+browser's \`localStorage\` under \`no-coin-challenge.records.v1\`.
+This is **not the original game's distance/points score**.
+Only \`data-run-mode="no-coin"\` pages contribute to the record.
+The generator now applies that marker **only** to
+\`nocoin-gameover.html\`; unmodified \`index.html\` gameplay does not
+add misleading times to the challenge scoreboard.
+
+Personal records are local to a browser/profile/origin, can be cleared
+alongside site data, and do not synchronize across devices. Private
+windows can erase their local storage on exit. Only runs completed
+since this addition can be recorded; old times were never saved.
+
+From the experiment branch:
+
+\`\`\`powershell
+git pull
+py tools/try_nocoin_gameover.py --write
+py -m http.server 8000
+\`\`\`
+
+Open **http://localhost:8000/nocoin-gameover.html**, play to game over,
+then scroll or select "YOUR BEST SCORE" to see your statistics.
+
+Optional automated JavaScript checks with Node.js:
+
+\`\`\`powershell
+node tools/test_challenge_site.cjs
+node tools/test_run_timer.cjs
+node tools/test_wasd_controls.cjs
+\`\`\`
+
+The challenge-site JavaScript and run-timer integration were also
+checked together using synthetic browser events. The visual
+Unity-loader reparenting and native fullscreen layout still require
+a browser test with the user's local game build.
+
+The generated alternative game assets remain ignored by Git. Do not
+commit or publicly deploy them without redistribution rights.
