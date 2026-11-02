@@ -454,62 +454,119 @@ def main():
 
     _, _, imports, _, bodies, _ = metadata
     packed_source, compression = source_asset(game_bytes)
-    coin_body = build_die_via_game_instance(funcs["game_instance"], funcs["die"])
-    patched, original_coin = replace_function_body(
-        game_bytes, funcs["coin"], imports, coin_body)
-    original_start = bodies[funcs["start"] - imports]
-    original_start_body = game_bytes[original_start[0]:
-                                     original_start[0] + original_start[1]]
+    callback_index = bridge_import(
+        game_bytes, metadata[0], metadata[1], imports)
+    print("Verified JS game-event import:", callback_index)
 
-    # Game.StartNewGame signature 'vii' = 2 params (Game this, MethodInfo*).
+    hoverboard_hook = select_hoverboard_hook(
+        script, game_bytes, metadata, records, args.hoverboard_hook)
+    if hoverboard_hook and hoverboard_hook[0] in (funcs["coin"], funcs["start"]):
+        raise RuntimeError("Hoverboard event method overlaps a coin/start hook")
+
+    # The full inventory/start preamble is unchanged from the user's
+    # confirmed working billion-item and character/board experiment.
+    start_pos, start_size = bodies[funcs["start"] - imports]
+    start_original = game_bytes[start_pos:start_pos + start_size]
     start_body = prepend_to_existing_body(
-        original_start_body,
+        start_original,
         lambda scratch: build_inventory_preamble(funcs, scratch, characters, boards),
         parameter_count=2,
     )
-    patched, old_start = replace_function_body(
-        patched, funcs["start"], imports, start_body)
-    if old_start != original_start_body or original_coin is None:
-        raise RuntimeError("Target bodies changed between patches; aborting")
 
-    new_metadata = analyze(patched)
-    if (new_metadata[1] != metadata[1] or new_metadata[2] != metadata[2]
-            or new_metadata[3] != metadata[3] or len(new_metadata[4]) != len(bodies)):
-        raise RuntimeError("WASM section structure failed verification")
+    # Variant A: existing normal coin-death behavior, but with optional
+    # precise hoverboard invalidation. This remains the default.
+    death_body = build_die_via_game_instance(funcs["game_instance"], funcs["die"])
+    death_wasm, original_coin = replace_function_body(
+        game_bytes, funcs["coin"], imports, death_body)
 
-    checksum = hashlib.sha256(patched).hexdigest()[:12]
-    asset_file = DEFAULT_ASSET.with_name(f"SanFrancisco.nocoin.unlocks.{checksum}.wasm.code.unityweb")
-    config_file = DEFAULT_CONFIG.with_name(f"SanFrancisco.nocoin.unlocks.{checksum}.json")
-    original_config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
-    if original_config.get("wasmCodeUrl") != DEFAULT_ASSET.name:
+    # Variant B: preserve the ORIGINAL Coin.Pickup method body, while
+    # emitting an immediate browser event to freeze the stopwatch.
+    coin_pos, coin_size = bodies[funcs["coin"] - imports]
+    if original_coin != game_bytes[coin_pos:coin_pos + coin_size]:
+        raise RuntimeError("Original pickup method unexpectedly changed")
+    timer_coin_body = prepend_to_existing_body(
+        original_coin,
+        lambda unused: marker_instruction(callback_index, COIN_MARKER),
+        parameter_count=2,
+    )
+    timer_wasm, timer_old_coin = replace_function_body(
+        game_bytes, funcs["coin"], imports, timer_coin_body)
+    if timer_old_coin != original_coin:
+        raise RuntimeError("Coin pickup mismatch across variants")
+
+    variants = {}
+    for mode, patched in (("game-over", death_wasm),
+                          ("timer-only", timer_wasm)):
+        patched, old_start = replace_function_body(
+            patched, funcs["start"], imports, start_body)
+        if old_start != start_original:
+            raise RuntimeError("Original Game.StartNewGame method mismatch")
+        patched = patch_hoverboard_event(
+            patched, hoverboard_hook, callback_index, imports)
+
+        parsed = analyze(patched)
+        if (parsed[1] != metadata[1] or parsed[2] != metadata[2]
+                or parsed[3] != metadata[3]
+                or len(parsed[4]) != len(bodies)):
+            raise RuntimeError("WASM structure check failed for " + mode)
+        variants[mode] = patched
+
+    # Inject only a tiny reserved-marker handler into a GENERATED copy of
+    # Unity's browser runtime; never overwrite tracked 4399.z.js.
+    runtime_path, runtime_js = runtime_output()
+
+    config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
+    if config.get("wasmCodeUrl") != DEFAULT_ASSET.name:
         raise ValueError("Unexpected original JSON WASM asset")
-    original_config["wasmCodeUrl"] = asset_file.name
 
     template = PAGE_TEMPLATE.read_text(encoding="utf-8")
     if (template.count("SanFrancisco.json") != 1 or
-            template.count('data-run-mode="standard"') != 1):
-        raise ValueError("Unexpected root page template; refusing to generate test")
-    page = template.replace("SanFrancisco.json", config_file.name)
-    page = page.replace('data-run-mode="standard"',
-                        'data-run-mode="no-coin"')
+            template.count('data-run-mode="standard"') != 1 or
+            template.count("4399.z.js") != 1):
+        raise ValueError("Unexpected root page template; refusing to generate")
 
-    print("Local original source:", packed_source)
-    print("Original WASM unchanged; compiled private test will be separate.")
-    print("IMPORTANT: Inventory runs only when Game.StartNewGame executes, "
-          "not necessarily at initial main menu.")
-    print("This is UNTESTED in the real game; back up your browser save.")
+    outputs = []
+    destination = {"game-over": output_page, "timer-only": timer_page}
+    for mode, wasm_blob in variants.items():
+        checksum = hashlib.sha256(wasm_blob).hexdigest()[:12]
+        asset = DEFAULT_ASSET.with_name(
+            f"SanFrancisco.nocoin.{mode}.{checksum}.wasm.code.unityweb")
+        config_path = DEFAULT_CONFIG.with_name(
+            f"SanFrancisco.nocoin.{mode}.{checksum}.json")
+        cfg = dict(config)
+        cfg["wasmCodeUrl"] = asset.name
+        other_mode = "timer-only" if mode == "game-over" else "game-over"
+        page = template.replace("SanFrancisco.json", config_path.name)
+        page = page.replace("4399.z.js", runtime_path.name)
+        page = page.replace(
+            'data-run-mode="standard"',
+            ('data-run-mode="no-coin" data-coin-mode="' + mode +
+             '" data-coin-mode-target="' + destination[other_mode].name +
+             '" data-hoverboard-hook="' +
+             ("active" if hoverboard_hook else "unavailable") + '"'))
+        outputs.append((mode, destination[mode], asset, config_path, cfg,
+                        page, wasm_blob))
+
+    print("Original WASM unchanged, separate game-over and timer-only builds.")
+    print("Coin rule: change using the scroll-down setting (reload required).")
+    print("Hoverboard detection:", "hooked" if hoverboard_hook else "UNAVAILABLE")
+    print("Output pages:", output_page, "and", timer_page)
+    print("Local runtime:", runtime_path)
     if not args.write:
-        print("Dry-run complete; add --write for experimental local files.")
+        print("Dry-run complete; add --write to generate private test files.")
         return
 
-    asset_file.write_bytes(encode_with_original_compression(patched, compression))
-    config_file.write_text(json.dumps(original_config, indent=2), encoding="utf-8")
-    output_page.write_text(page, encoding="utf-8")
-    print("Created:", asset_file)
-    print("Created:", config_file)
-    print("Created:", output_page)
-    print(f"Open http://localhost:8000/{output_page.name} in an isolated browser profile.")
-    print("Do not commit/redistribute these commercial game assets.")
+    runtime_path.write_text(runtime_js, encoding="utf-8")
+    for mode, page_path, asset_path, config_path, cfg, page, wasm_blob in outputs:
+        asset_path.write_bytes(
+            encode_with_original_compression(wasm_blob, compression))
+        config_path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+        page_path.write_text(page, encoding="utf-8")
+        print("Generated", mode, ":", page_path)
+    print("Open http://localhost:8000/" + output_page.name)
+    print("Scroll down to challenge settings to switch coin behavior.")
+    print("Browser records are shared. The original assets are unchanged.")
+    print("Keep all generated commercial files private.")
 
 
 if __name__ == "__main__":
