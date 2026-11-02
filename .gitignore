@@ -10,3 +10,8 @@ Build/SanFrancisco/SanFrancisco.probe.*.wasm.code.unityweb
 nocoin-gameover.html
 Build/SanFrancisco/SanFrancisco.nocoin.gameover.*.json
 Build/SanFrancisco/SanFrancisco.nocoin.gameover.*.wasm.code.unityweb
+
+# Private local inventory + No-Coin test: do not commit commercial WASM
+nocoin-unlocks.html
+Build/SanFrancisco/SanFrancisco.nocoin.unlocks.*.json
+Build/SanFrancisco/SanFrancisco.nocoin.unlocks.*.wasm.code.unityweb
