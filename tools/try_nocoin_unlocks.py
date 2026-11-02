@@ -104,7 +104,11 @@ def find_records(text):
             namespace = stripped[len("// Namespace: "):]
             continue
         if "// TypeDefIndex:" in stripped:
-            m = re.search(r"\b(class|struct|enum|interface)\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)", stripped)
+            # Capture the entire C# type token, including compiler-generated
+            # nested names such as Game.<WaitForSecond>d__123 and Game.<>c.
+            # The old regex stopped at "<", mistakenly identifying every
+            # Game.<...> nested type as another SYBO.Subway.Game.
+            m = re.search(r"\b(class|struct|enum|interface)\s+([^\s:{]+)", stripped)
             current = None
             if m:
                 kind, simple = m.groups()
