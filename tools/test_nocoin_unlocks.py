@@ -7,6 +7,7 @@ from try_nocoin_unlocks import (
     MAX_ITEMS, build_inventory_preamble, enum_ids, find_records, exact_record,
     output_page_for, timer_page_for,
     prepend_to_existing_body, signed_leb, verify_parameter_types,
+    speed_instruction, BLITZ_TIMESCALE,
     verify_upgrade_ids,
 )
 
@@ -179,6 +180,23 @@ public enum UpgradeType // TypeDefIndex: 204
         for method, params in expected.items():
             with self.subTest(method=method):
                 self.assertTrue(verify_parameter_types(self.records, method, params))
+
+    def test_blitz_sets_real_unity_float_speed(self):
+        import struct
+        from patch_no_coin_local import uleb
+        code = speed_instruction(4242)
+        self.assertTrue(code.startswith(b'\x43' + struct.pack('<f', BLITZ_TIMESCALE)))
+        self.assertEqual(code[5:], b'\x41\x00\x10' + uleb(4242))
+        with self.assertRaises(ValueError):
+            speed_instruction(4242, 8.0)
+
+    def test_blitz_invocation_only_when_requested(self):
+        from patch_no_coin_local import uleb
+        targets = {'keys_get': 1, 'keys_set': 2, 'amount_get': 3,
+                   'amount_add': 4}
+        normal = build_inventory_preamble(targets, 2, [], [])
+        blitz = build_inventory_preamble(targets, 2, [], [], blitz_setter=1234)
+        self.assertEqual(blitz, normal + speed_instruction(1234))
 
     def test_signed_leb_large_item_amount(self):
         raw = signed_leb(MAX_ITEMS)
