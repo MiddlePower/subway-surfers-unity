@@ -960,3 +960,53 @@ previous locally generated working versions. Share the terminal
 error if that happens.
 
 Do not commit or publicly redistribute generated commercial assets.
+
+
+## Hoverboard stop fix and optional Blitz speed (experiment)
+
+The negative InventorySave.IncreaseAmount inventory hook did not fire
+when the user activated a hoverboard. The website now loads a fallback
+in tools/hoverboard-input.js: during an active timed No-Coin run, Space
+or double-click/double-tap on the game invokes the hoverboard timer-stop
+event. The runner keeps going and the final time is saved. This
+detects an activation attempt rather than verifying that Unity accepted
+it: pressing Space during a cooldown can stop the timer. We need the
+real hoverboard activation method for perfect accuracy; inspect
+tools/inspect_run_mechanics.py for candidate method names.
+
+The --blitz option adds two experimental game variants, both using
+the same billion-item inventory and character/board unlocks. It
+injects UnityEngine.Time.set_timeScale(2.25f) at Game.StartNewGame
+to make the game initially play much faster. The generator verifies
+the real WASM function signature before generating Blitz pages; if
+the stripped build lacks the method, no Blitz output is written.
+
+After updating the experiment branch, use these commands:
+
+    git pull
+    py -m unittest discover -s tools -p "test_nocoin_unlocks.py"
+    py -m unittest discover -s tools -p "test_challenge_wasm_bridge.py"
+    node tools/test_hoverboard_input.cjs
+    py tools/try_nocoin_unlocks.py --blitz
+    py tools/try_nocoin_unlocks.py --blitz --write
+    py -m http.server 8000
+
+If native timeScale is verified, the pages generated are:
+- nocoin-unlocks-full.html (normal speed, coin = death)
+- nocoin-unlocks-timer.html (normal speed, coin = timer only)
+- nocoin-blitz.html (2.25x Unity timeScale, coin = death)
+- nocoin-blitz-timer.html (2.25x Unity timeScale, coin = timer only)
+
+The scroll-down Challenge Settings controls select these two
+independent options while retaining the other option.
+
+If --blitz fails to find UnityEngine.Time.set_timeScale, run:
+
+    py tools/inspect_run_mechanics.py > local-analysis/run-mechanics.txt
+
+The report is read-only; supply its relevant candidate lines to
+investigate a game-specific speed and hoverboard activation hook.
+
+Both the effect of Unity timeScale and the input fallback need live
+browser verification. No generated commercial assets are committed
+or meant for public redistribution.
