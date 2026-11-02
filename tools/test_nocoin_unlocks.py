@@ -4,7 +4,7 @@ import unittest
 
 from resolve_wasm_methods import Reader
 from try_nocoin_unlocks import (
-    MAX_ITEMS, build_inventory_preamble, enum_ids, find_records,
+    MAX_ITEMS, build_inventory_preamble, enum_ids, find_records, exact_record,
     prepend_to_existing_body, signed_leb, verify_parameter_types,
     verify_upgrade_ids,
 )
@@ -52,6 +52,38 @@ public class Game : MonoBehaviour // TypeDefIndex: 14
 class NoCoinUnlockTests(unittest.TestCase):
     def setUp(self):
         self.records = find_records(MOCK_METADATA)
+
+    def test_nested_game_types_do_not_shadow_main_game_class(self):
+        nested = """// Namespace: SYBO.Subway
+private sealed class Game.<StartNewGame>d__12 : IEnumerator // TypeDefIndex: 15
+{
+    // Methods
+    public void MoveNext() { }
+}
+// Namespace: SYBO.Subway
+private sealed class Game.<>c__DisplayClass7_0 // TypeDefIndex: 16
+{
+    // Methods
+    public void StartNewGame() { }
+}
+// Namespace: SYBO.Subway
+public class Game.<OtherCoroutine>d__22 // TypeDefIndex: 17
+{
+}
+"""
+        records = find_records(MOCK_METADATA + nested)
+        game = exact_record(records, 'SYBO.Subway.Game')
+        self.assertEqual(game['kind'], 'class')
+        self.assertEqual(len([r for r in records if r['name'] == 'SYBO.Subway.Game']), 1)
+        self.assertIn('SYBO.Subway.Game.<StartNewGame>d__12',
+                      [r['name'] for r in records])
+        self.assertIn('SYBO.Subway.Game.<>c__DisplayClass7_0',
+                      [r['name'] for r in records])
+        self.assertIn('SYBO.Subway.Game.<OtherCoroutine>d__22',
+                      [r['name'] for r in records])
+        self.assertIn('StartNewGame()', verify_parameter_types(
+            records, 'SYBO.Subway.Game$StartNewGame', (),
+            expect_static=False))
 
     def test_enum_ids_from_metadata(self):
         verify_upgrade_ids(self.records)
