@@ -5,7 +5,7 @@ import unittest
 from resolve_wasm_methods import Reader
 from try_nocoin_unlocks import (
     MAX_ITEMS, build_inventory_preamble, enum_ids, find_records, exact_record,
-    output_page_for,
+    output_page_for, timer_page_for,
     prepend_to_existing_body, signed_leb, verify_parameter_types,
     verify_upgrade_ids,
 )
@@ -143,6 +143,8 @@ public enum UpgradeType // TypeDefIndex: 204
     def test_page_modes_do_not_overwrite_each_other(self):
         self.assertEqual(output_page_for(True).name, "nocoin-unlocks.html")
         self.assertEqual(output_page_for(False).name, "nocoin-unlocks-full.html")
+        self.assertEqual(timer_page_for(False).name, "nocoin-unlocks-timer.html")
+        self.assertEqual(timer_page_for(True).name, "nocoin-unlocks-items-timer.html")
 
     def test_enum_ids_from_metadata(self):
         verify_upgrade_ids(self.records)
