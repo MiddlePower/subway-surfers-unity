@@ -45,6 +45,13 @@
     return state === 'running' ? Math.max(0, now() - startedAt) : elapsedMs;
   }
 
+  function announceState() {
+    const ms = currentElapsed();
+    window.dispatchEvent(new CustomEvent('runner-timer-state', {
+      detail: { state, elapsedMs: ms, formatted: formatted(ms) },
+    }));
+  }
+
   function draw() {
     if (!panel) return;
     labelNode.textContent = (
@@ -69,6 +76,7 @@
     startedAt = now();
     state = 'running';
     draw();
+    announceState();
     frameId = requestAnimationFrame(tick);
   }
 
@@ -79,6 +87,7 @@
     if (frameId !== null) cancelAnimationFrame(frameId);
     frameId = null;
     draw();
+    announceState();
   }
 
   function record(event, args) {
@@ -121,7 +130,7 @@
     panel.id = 'no-coin-timer';
     panel.setAttribute('aria-label', 'No-Coin Challenge run timer');
     panel.style.cssText = [
-      'position:fixed',
+      'position:absolute',
       'top:12px',
       'left:50%',
       'transform:translateX(-50%)',
@@ -145,7 +154,11 @@
     timeNode = document.createElement('div');
     timeNode.style.cssText = 'font-size:28px;font-weight:800;line-height:1.2;white-space:nowrap';
     panel.append(labelNode, timeNode);
-    document.body.appendChild(panel);
+    // Keep the timer attached to the game: scrolling to records should
+    // not leave a floating timer covering the statistics section.
+    const stage = typeof document.getElementById === 'function'
+      ? document.getElementById('challenge-stage') : null;
+    (stage || document.body).appendChild(panel);
     draw();
   }
 
