@@ -126,4 +126,36 @@ replacement.roundEnd('run');
 assert.equal(timer.snapshot().formatted, '00:01.99');
 assert.equal(observed.length, 8);
 
-console.log('Timer tests passed: start, stop, freeze, reset, duplicate events, SDK replacement and display');
+// The patched Coin.Pickup method can signal the stopwatch without
+// ending the Unity run. The first signal is final; later events cannot
+// shorten or extend that same attempt.
+clock = 90_000;
+replacement.roundStart('run');
+clock = 94_570;
+window.dispatchEvent(new FakeCustomEvent('runner-game-event', {
+  detail: { kind: 'coin' },
+}));
+assert.equal(timer.snapshot().state, 'finished');
+assert.equal(timer.snapshot().formatted, '00:04.57');
+assert.equal(timer.snapshot().reason, 'coin');
+assert.equal(panel.children[0].textContent, 'COIN PICKED UP');
+clock = 100_000;
+window.dispatchEvent(new FakeCustomEvent('runner-game-event', {
+  detail: { kind: 'hoverboard' },
+}));
+replacement.roundEnd('run'); // Subsequent death must not change time.
+assert.equal(timer.snapshot().formatted, '00:04.57');
+assert.equal(timer.snapshot().reason, 'coin');
+
+// Hoverboard activation also stops the timer on the first event.
+clock = 105_000;
+replacement.roundStart('run');
+clock = 107_340;
+window.dispatchEvent(new FakeCustomEvent('runner-game-event', {
+  detail: { kind: 'hoverboard' },
+}));
+assert.equal(timer.snapshot().formatted, '00:02.34');
+assert.equal(timer.snapshot().reason, 'hoverboard');
+assert.equal(panel.children[0].textContent, 'HOVERBOARD USED');
+
+console.log('Timer tests passed: start, game end, coin-only timer stop, hoverboard stop, duplicate stops and SDK replacement');
