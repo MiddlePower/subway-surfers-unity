@@ -68,6 +68,7 @@ function boot(mode, saved) {
     readyState: 'complete',
     fullscreenElement: null,
     getElementById(id) { return nodes.get(id) || null; },
+    querySelector() { return null; },
     createElement(tag) { return new Node(tag); },
     addEventListener(k, fn) { addListener('doc.'+k, fn); },
     dispatchEvent(e) { for(const fn of listeners.get('doc.'+e.type)||[]) fn(e); },
