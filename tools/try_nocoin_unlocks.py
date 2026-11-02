@@ -341,14 +341,18 @@ def select_hoverboard_hook(script, wasm, metadata, records, explicit=None):
             "ActivateHoverboard", "UseHoverboard", "StartHoverboard",
             "ActivateBoard", "UseBoard", "OnHoverboardActivated",
         }
-        direct = [m for m in suggestions
-                  if m["Name"].rsplit("$", 1)[-1] in preferred_names
-                  and m.get("TypeSignature", "").startswith("v")]
+        direct = [
+            m for m in suggestions
+            if m.get("TypeSignature", "").startswith("v") and
+            (m["Name"].rsplit("$$", 1)[-1] in preferred_names or
+             (m["Name"].rsplit("$$", 1)[-1] in ("Activate", "Use", "Start")
+              and "hoverboard" in m["Name"].split("$$", 1)[0].lower()))
+        ]
         if len(direct) == 1:
             candidate, route = direct[0], "direct"
         else:
             spends = [m for m in suggestions
-                      if m.get("Name") == "Data.Save.InventorySave$DecreaseAmount"
+                      if m.get("Name") == "Data.Save.InventorySave$$DecreaseAmount"
                       and m.get("TypeSignature") == "viii"]
             if len(spends) == 1:
                 candidate, route = spends[0], "consumption"
@@ -566,6 +570,17 @@ def main():
         return
 
     runtime_path.write_text(runtime_js, encoding="utf-8")
+    # Preserve the previously working generated page before replacing it.
+    # Its content-addressed WASM and JSON remain on disk as well.
+    for old_page in (output_page, timer_page):
+        if old_page.exists():
+            previous = old_page.read_bytes()
+            backup = old_page.with_name(
+                old_page.stem + ".backup-" +
+                hashlib.sha256(previous).hexdigest()[:10] + old_page.suffix)
+            if not backup.exists():
+                backup.write_bytes(previous)
+                print("Saved previous local page:", backup)
     for mode, page_path, asset_path, config_path, cfg, page, wasm_blob in outputs:
         asset_path.write_bytes(
             encode_with_original_compression(wasm_blob, compression))
