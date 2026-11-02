@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import re
+import struct
 from pathlib import Path
 
 from patch_no_coin_local import encode_with_original_compression, replace_function_body, uleb
@@ -45,6 +46,10 @@ OUTPUT_PAGE_ITEMS = Path("nocoin-unlocks.html")
 OUTPUT_PAGE_FULL = Path("nocoin-unlocks-full.html")
 OUTPUT_PAGE_TIMER = Path("nocoin-unlocks-timer.html")
 OUTPUT_PAGE_ITEMS_TIMER = Path("nocoin-unlocks-items-timer.html")
+OUTPUT_PAGE_BLITZ = Path("nocoin-blitz.html")
+OUTPUT_PAGE_BLITZ_TIMER = Path("nocoin-blitz-timer.html")
+BLITZ_TIMESCALE = 2.25
+BLITZ_METHOD = "UnityEngine.Time$$set_timeScale"
 
 
 def output_page_for(items_only):
@@ -75,6 +80,47 @@ METHODS = {
     "board_owned": ("Data.Managers.BoardManager$$IsBoardOwned", "iii", ("Boards.BoardId",)),
     "board_unlock": ("Data.Managers.BoardManager$$UnlockBoard", "vii", ("Boards.BoardId",)),
 }
+
+
+def speed_setter(script, wasm, metadata):
+    """Resolve UnityEngine.Time.set_timeScale(float) by actual WASM type.
+
+    Never substitute an arbitrary speed setter: a wrong instance pointer or
+    gameplay-speed field can crash an IL2CPP build. A missing method means
+    Blitz cannot yet be generated for this particular game binary.
+    """
+    matches = [m for m in script.get("ScriptMethod", [])
+               if m.get("Name") == BLITZ_METHOD]
+    if len(matches) != 1:
+        plausible = [m.get("Name") for m in script.get("ScriptMethod", [])
+                     if "timescale" in m.get("Name", "").lower()
+                     or "set_speed" in m.get("Name", "").lower()]
+        raise RuntimeError(
+            f"Blitz requires {BLITZ_METHOD}, but the metadata has "
+            f"{len(matches)} matches. Candidate methods: {plausible[:20]}. "
+            "Run py tools/inspect_run_mechanics.py to inspect speed methods.")
+    m = matches[0]
+    types, type_ids, imports, table, bodies, diag = metadata
+    index, error = map_target(wasm, script, BLITZ_METHOD,
+                              types, type_ids, imports, table, bodies,
+                              diag["exports"])
+    if error:
+        raise RuntimeError("Cannot map Blitz time-scale setter: " + error)
+    got = signature(types[type_ids[index]])
+    if m.get("TypeSignature") != "vfi" or got != "vfi" or index < imports:
+        raise RuntimeError(
+            f"Blitz time-scale signature must be void(float,MethodInfo*), "
+            f"got metadata={m.get('TypeSignature')} WASM={got}")
+    print("Blitz speed hook verified:", BLITZ_METHOD, "WASM", index,
+          "factor", BLITZ_TIMESCALE)
+    return index
+
+
+def speed_instruction(function_index, speed=BLITZ_TIMESCALE):
+    """WASM f32.const factor; i32.const null MethodInfo; call setter."""
+    if not 1 < speed <= 4:
+        raise ValueError("Speed factor must be >1 and <=4")
+    return b"\x43" + struct.pack("<f",speed) + b"\x41\x00\x10" + uleb(function_index)
 
 
 def signed_leb(value):
@@ -264,7 +310,7 @@ def resolve_methods(wasm, script, metadata, collection):
     return indices
 
 
-def build_inventory_preamble(methods, local_index, character_ids, board_ids):
+def build_inventory_preamble(methods, local_index, character_ids, board_ids, blitz_setter=None):
     instructions = bytearray()
 
     # keys = max(currentKeys, 1 billion) (do not reduce an existing balance).
@@ -302,6 +348,8 @@ def build_inventory_preamble(methods, local_index, character_ids, board_ids):
             unlock = const(board) + const(0) + call(methods["board_unlock"])
             instructions.extend(conditional(test, unlock))
 
+    if blitz_setter is not None:
+        instructions.extend(speed_instruction(blitz_setter))
     return bytes(instructions)
 
 
@@ -421,6 +469,8 @@ def main():
                         help="Generate local page and asset (no overwrites of original build)")
     parser.add_argument("--items-only", action="store_true",
                         help="Skip character/board model unlocks; test currencies and consumables first")
+    parser.add_argument("--blitz", action="store_true",
+                        help="Build 2.25x time-scale Blitz game pages if the native setter is available")
     parser.add_argument("--hoverboard-hook",
                         help="Exact verified IL2CPP method name to signal hoverboard use")
     parser.add_argument("--max-characters", type=int, default=0,
@@ -473,6 +523,7 @@ def main():
 
     hoverboard_hook = select_hoverboard_hook(
         script, game_bytes, metadata, records, args.hoverboard_hook)
+    blitz_setter = speed_setter(script, game_bytes, metadata) if args.blitz else None
     if hoverboard_hook and hoverboard_hook[0] in (funcs["coin"], funcs["start"]):
         raise RuntimeError("Hoverboard event method overlaps a coin/start hook")
 
