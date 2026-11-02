@@ -30,6 +30,10 @@ from probe_coin_hook import DEFAULT_ASSET, DEFAULT_CONFIG, ORIGINAL_WASM, PAGE_T
 from resolve_wasm_methods import Reader, analyze, signature
 from show_resolved_wasm_bodies import map_target
 from try_nocoin_gameover import build_die_via_game_instance, COIN_PICKUP, GAME_DIE, GAME_INSTANCE
+from challenge_wasm_bridge import (
+    COIN_MARKER, HOVERBOARD_MARKER, bridge_import, marker_instruction,
+    runtime_output, enumerate_hoverboard_candidates,
+)
 
 MAX_ITEMS = 1_000_000_000
 SCRIPT = Path("local-analysis/dump/script.json")
@@ -39,10 +43,16 @@ DUMP = Path("local-analysis/dump/dump.cs")
 # browser/loader caches cannot silently show the items-only version.
 OUTPUT_PAGE_ITEMS = Path("nocoin-unlocks.html")
 OUTPUT_PAGE_FULL = Path("nocoin-unlocks-full.html")
+OUTPUT_PAGE_TIMER = Path("nocoin-unlocks-timer.html")
+OUTPUT_PAGE_ITEMS_TIMER = Path("nocoin-unlocks-items-timer.html")
 
 
 def output_page_for(items_only):
     return OUTPUT_PAGE_ITEMS if items_only else OUTPUT_PAGE_FULL
+
+
+def timer_page_for(items_only):
+    return OUTPUT_PAGE_ITEMS_TIMER if items_only else OUTPUT_PAGE_TIMER
 
 
 # UpgradeType enum values are checked against dump.cs, not assumed to match
@@ -312,12 +322,94 @@ def prepend_to_existing_body(existing, preamble, parameter_count):
     return header + preamble(scratch_index) + existing[reader.pos:]
 
 
+def select_hoverboard_hook(script, wasm, metadata, records, explicit=None):
+    """Choose an activation-specific method, or verified inventory consumption.
+
+    Never guess an arbitrary Hoverboard method. If the compiled game's
+    names are ambiguous, generate the coin toggle but print candidates.
+    """
+    suggestions = enumerate_hoverboard_candidates(script)
+    if explicit:
+        matches = [m for m in script.get("ScriptMethod", [])
+                   if m.get("Name") == explicit]
+        if len(matches) != 1:
+            raise ValueError("Requested hoverboard hook not found in script.json: " + explicit)
+        candidate = matches[0]
+        route = "explicit"
+    else:
+        preferred_names = {
+            "ActivateHoverboard", "UseHoverboard", "StartHoverboard",
+            "ActivateBoard", "UseBoard", "OnHoverboardActivated",
+        }
+        direct = [m for m in suggestions
+                  if m["Name"].rsplit("$", 1)[-1] in preferred_names]
+        if len(direct) == 1:
+            candidate, route = direct[0], "direct"
+        else:
+            spends = [m for m in suggestions
+                      if m.get("Name") == "Data.Save.InventorySave$DecreaseAmount"]
+            if len(spends) == 1:
+                candidate, route = spends[0], "consumption"
+            else:
+                print("WARNING: No unambiguous hoverboard activation/consumption hook.")
+                print("Potential names in your build (for follow-up analysis):")
+                for method in suggestions[:25]:
+                    print(" -", method.get("Name"), method.get("TypeSignature"))
+                print("Hoverboard-specific automatic timer stop NOT YET ACTIVE.")
+                return None
+
+    name = candidate["Name"]
+    expected_sig = candidate.get("TypeSignature")
+    types, type_ids, imports, table, bodies, diag = metadata
+    index, err = map_target(wasm, script, name, types, type_ids, imports,
+                            table, bodies, diag["exports"])
+    if err:
+        raise RuntimeError("Hoverboard method cannot be verified: " + err)
+    actual = signature(types[type_ids[index]])
+    if actual != expected_sig or index < imports or not actual.startswith("v"):
+        raise RuntimeError(
+            f"Hoverboard hook signature mismatch: {name}: {actual}/{expected_sig}")
+    if route == "consumption":
+        # Only stop for UpgradeType.hoverboard == 1, never for unrelated
+        # powerups bought/consumed via the same method.
+        verify_parameter_types(records, name, ("UpgradeType", "int"))
+        if actual != "viii":
+            raise RuntimeError("Expected DecreaseAmount(UpgradeType,int) -> viii")
+    print("Hoverboard event source:", name, "(route:", route, "signature:", actual + ")")
+    return index, len(types[type_ids[index]][0]), route
+
+
+def patch_hoverboard_event(wasm, hook, import_index, imports):
+    if not hook:
+        return wasm
+    func_index, parameters, route = hook
+    if route == "consumption":
+        # InventorySave.DecreaseAmount(UpgradeType type, int amount):
+        # send the event only for type==hoverboard (1).
+        event = (b"\x20\x00" + b"\x41\x01\x46" +
+                 b"\x04\x40" +
+                 marker_instruction(import_index, HOVERBOARD_MARKER) +
+                 b"\x0b")
+    else:
+        event = marker_instruction(import_index, HOVERBOARD_MARKER)
+    start, size = analyze(wasm)[4][func_index-imports]
+    original = wasm[start:start+size]
+    replacement = prepend_to_existing_body(
+        original, lambda unused: event, parameter_count=parameters)
+    patched, old = replace_function_body(wasm, func_index, imports, replacement)
+    if old != original:
+        raise RuntimeError("Hoverboard function body changed unexpectedly")
+    return patched
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true",
                         help="Generate local page and asset (no overwrites of original build)")
     parser.add_argument("--items-only", action="store_true",
                         help="Skip character/board model unlocks; test currencies and consumables first")
+    parser.add_argument("--hoverboard-hook",
+                        help="Exact verified IL2CPP method name to signal hoverboard use")
     parser.add_argument("--max-characters", type=int, default=0,
                         help="Limit initial test to N character IDs (0 means all)")
     parser.add_argument("--max-boards", type=int, default=0,
@@ -344,6 +436,7 @@ def main():
     if not args.items_only and (not characters or not boards):
         raise RuntimeError("Full unlock test requires verified character and board IDs")
     output_page = output_page_for(args.items_only)
+    timer_page = timer_page_for(args.items_only)
     if args.max_characters:
         characters = characters[:args.max_characters]
     if args.max_boards:
