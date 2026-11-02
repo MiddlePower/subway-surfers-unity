@@ -30,3 +30,9 @@ Build/SanFrancisco/SanFrancisco.nocoin.timer-only.*.wasm.code.unityweb
 
 # Local backups of previous working generated challenge pages
 nocoin-unlocks*.backup-*.html
+
+# Locally generated 2.25x Blitz experimental variants (private only)
+nocoin-blitz.html
+nocoin-blitz-timer.html
+Build/SanFrancisco/SanFrancisco.nocoin.*.blitz.*.wasm.code.unityweb
+Build/SanFrancisco/SanFrancisco.nocoin.*.blitz.*.json
