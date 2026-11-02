@@ -40,6 +40,11 @@ DUMP = Path("local-analysis/dump/dump.cs")
 OUTPUT_PAGE_ITEMS = Path("nocoin-unlocks.html")
 OUTPUT_PAGE_FULL = Path("nocoin-unlocks-full.html")
 
+
+def output_page_for(items_only):
+    return OUTPUT_PAGE_ITEMS if items_only else OUTPUT_PAGE_FULL
+
+
 # UpgradeType enum values are checked against dump.cs, not assumed to match
 # some other Subway Surfers build.
 UPGRADES = {
@@ -319,7 +324,7 @@ def main():
     boards = [] if args.items_only else enum_ids(records, "Boards.BoardId")
     if not args.items_only and (not characters or not boards):
         raise RuntimeError("Full unlock test requires verified character and board IDs")
-    output_page = OUTPUT_PAGE_ITEMS if args.items_only else OUTPUT_PAGE_FULL
+    output_page = output_page_for(args.items_only)
     if args.max_characters:
         characters = characters[:args.max_characters]
     if args.max_boards:
