@@ -20,6 +20,7 @@
   let state = 'ready';
   let startedAt = 0;
   let elapsedMs = 0;
+  let stoppedBy = null;
   let frameId = null;
   let labelNode = null;
   let timeNode = null;
@@ -48,7 +49,7 @@
   function announceState() {
     const ms = currentElapsed();
     window.dispatchEvent(new CustomEvent('runner-timer-state', {
-      detail: { state, elapsedMs: ms, formatted: formatted(ms) },
+      detail: { state, elapsedMs: ms, formatted: formatted(ms), reason: stoppedBy },
     }));
   }
 
@@ -56,7 +57,8 @@
     if (!panel) return;
     labelNode.textContent = (
       state === 'running' ? 'RUN TIME' :
-      state === 'finished' ? 'FINAL TIME' : 'NO-COIN TIMER'
+      state === 'finished' ? (stoppedBy === 'coin' ? 'COIN PICKED UP' :
+        stoppedBy === 'hoverboard' ? 'HOVERBOARD USED' : 'FINAL TIME') : 'NO-COIN TIMER'
     );
     timeNode.textContent = formatted(currentElapsed());
     panel.dataset.state = state;
@@ -75,20 +77,29 @@
     elapsedMs = 0;
     startedAt = now();
     state = 'running';
+    stoppedBy = null;
     draw();
     announceState();
     frameId = requestAnimationFrame(tick);
   }
 
-  function stop() {
+  function stop(reason = 'game-over') {
     if (state !== 'running') return;
     elapsedMs = Math.max(0, now() - startedAt);
     state = 'finished';
+    stoppedBy = reason;
     if (frameId !== null) cancelAnimationFrame(frameId);
     frameId = null;
     draw();
     announceState();
   }
+
+  // Signals originate only from the local patched Unity bridge.
+  // Original game/SDK events still govern regular death and run resets.
+  window.addEventListener('runner-game-event', event => {
+    const kind = event.detail?.kind;
+    if (kind === 'coin' || kind === 'hoverboard') stop(kind);
+  });
 
   function record(event, args) {
     // Ignore unrelated SDK rounds if the provider passes a round label.
@@ -175,6 +186,6 @@
   document.addEventListener('visibilitychange', draw);
 
   window.RunnerRunTimer = Object.freeze({
-    snapshot: () => ({ state, elapsedMs: currentElapsed(), formatted: formatted(currentElapsed()) }),
+    snapshot: () => ({ state, elapsedMs: currentElapsed(), formatted: formatted(currentElapsed()), reason: stoppedBy }),
   });
 })();
