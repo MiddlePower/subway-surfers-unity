@@ -5,3 +5,8 @@ local-analysis/
 nocoin-probe.html
 Build/SanFrancisco/SanFrancisco.probe.*.json
 Build/SanFrancisco/SanFrancisco.probe.*.wasm.code.unityweb
+
+# Alternative local-only no-coin game-over build
+nocoin-gameover.html
+Build/SanFrancisco/SanFrancisco.nocoin.gameover.*.json
+Build/SanFrancisco/SanFrancisco.nocoin.gameover.*.wasm.code.unityweb
