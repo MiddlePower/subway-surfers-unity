@@ -155,14 +155,15 @@ def verify_upgrade_ids(records):
             raise RuntimeError(f"UpgradeType.{name}={expected} missing/mismatched")
 
 
-def verify_parameter_types(records, full_method, expected):
+def verify_parameter_types(records, full_method, expected, expect_static=True):
     owner, method_name = full_method.split("$$", 1)
     record = exact_record(records, owner)
     declarations = []
     for line in record["lines"]:
         if not re.search(r"\b" + re.escape(method_name) + r"\s*\(", line):
             continue
-        if " static " not in " " + line + " ":
+        static = " static " in (" " + line + " ")
+        if static != expect_static:
             continue
         if not line.endswith("{ }"):
             continue
@@ -298,7 +299,8 @@ def main():
 
     for key, (_, _, types) in METHODS.items():
         if key in funcs:
-            print("Declaration:", verify_parameter_types(records, METHODS[key][0], types))
+            print("Declaration:", verify_parameter_types(
+                records, METHODS[key][0], types, expect_static=(key != "start")))
 
     characters = [] if args.items_only else enum_ids(records, "Characters.CharacterId")
     boards = [] if args.items_only else enum_ids(records, "Boards.BoardId")
