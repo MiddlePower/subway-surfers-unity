@@ -1,0 +1,38 @@
+# Local analysis of commercial Unity build (never commit extracted binaries)
+local-analysis/
+
+# Generated local-only WASM diagnostics (never commit or publish)
+nocoin-probe.html
+Build/SanFrancisco/SanFrancisco.probe.*.json
+Build/SanFrancisco/SanFrancisco.probe.*.wasm.code.unityweb
+
+# Alternative local-only no-coin game-over build
+nocoin-gameover.html
+Build/SanFrancisco/SanFrancisco.nocoin.gameover.*.json
+Build/SanFrancisco/SanFrancisco.nocoin.gameover.*.wasm.code.unityweb
+
+# Private local inventory + No-Coin test: do not commit commercial WASM
+nocoin-unlocks.html
+Build/SanFrancisco/SanFrancisco.nocoin.unlocks.*.json
+Build/SanFrancisco/SanFrancisco.nocoin.unlocks.*.wasm.code.unityweb
+
+# Separate full character + board unlock experiment
+nocoin-unlocks-full.html
+
+# Generated private local challenge-rule variants and bridge runtime
+nocoin-unlocks-timer.html
+nocoin-unlocks-items-timer.html
+4399.challenge.*.js
+Build/SanFrancisco/SanFrancisco.nocoin.game-over.*.json
+Build/SanFrancisco/SanFrancisco.nocoin.game-over.*.wasm.code.unityweb
+Build/SanFrancisco/SanFrancisco.nocoin.timer-only.*.json
+Build/SanFrancisco/SanFrancisco.nocoin.timer-only.*.wasm.code.unityweb
+
+# Local backups of previous working generated challenge pages
+nocoin-unlocks*.backup-*.html
+
+# Locally generated 2.25x Blitz experimental variants (private only)
+nocoin-blitz.html
+nocoin-blitz-timer.html
+Build/SanFrancisco/SanFrancisco.nocoin.*.blitz.*.wasm.code.unityweb
+Build/SanFrancisco/SanFrancisco.nocoin.*.blitz.*.json
