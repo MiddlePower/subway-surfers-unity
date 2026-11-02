@@ -683,3 +683,45 @@ output is necessary to avoid inventing ownership methods or damaging
 local save data. Any future patch should apply only to the user's
 private local build, with a save backup and no deployment of
 unauthorized commercial assets.
+
+## 2026-11-02 inventory report findings and targeted next checks
+
+The user's uploaded text report from \`inspect_unlocks.py\` confirms these
+**metadata declarations** (not yet validated runtime behavior):
+
+- \`Data.Save.InventorySave\`: \`SetKeys\` (\`vii\`), \`IncreaseAmount\`
+  (\`viii\`), \`GetAmount\` (\`iii\`), \`keys { get; set; }\`.
+- \`Data.Managers.BoardManager\`: \`IsBoardOwned\`, \`IsBoardUnlocked\`
+  (\`iii\` each). These are board ownership checks, not consumable
+  hoverboard quantities.
+- \`Info.SellableConsumable\`: \`headstart\`, \`scorebooster\`,
+  \`hoverboard\` static descriptors.
+- None of those class/method names alone identifies the
+  \`UpgradeType\` enum numeric values, item quantity arguments, or
+  **character unlock/save** method. Guessing would risk changing
+  unrelated player progress.
+
+The targeted read-only inspector prints **full C# declarations**,
+particularly parameter types and enum numeric values:
+
+\`\`\`powershell
+git pull
+py -m unittest discover -s tools -p "test_inventory_details.py"
+py tools/inspect_inventory_details.py > local-analysis/inventory-details.txt
+\`\`\`
+
+The generic WASM method inspector now accepts repeatable \`--name\`
+arguments, for signature/table verification of relevant methods
+(the output is also read-only):
+
+\`\`\`powershell
+py tools/show_resolved_wasm_bodies.py local-analysis/game.wasm local-analysis/dump/script.json --max-bytes 48 --name 'Data.Save.InventorySave$$SetKeys' --name 'Data.Save.InventorySave$$IncreaseAmount' --name 'Data.Save.InventorySave$$GetAmount' --name 'Data.Managers.BoardManager$$IsBoardOwned' > local-analysis/inventory-wasm.txt
+\`\`\`
+
+**PowerShell note:** Keep the single quotes around arguments containing
+\`$$\` to prevent PowerShell from expanding them.
+
+Inspect the two output text files before implementing local item
+grants. Save backups, confirm the game uses local rather than
+cloud-authoritative ownership, and do not commit modified commercial
+game binaries or publish them without authorization.
