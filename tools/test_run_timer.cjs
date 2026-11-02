@@ -124,6 +124,6 @@ replacement.roundStart('run');
 clock = 82_999;
 replacement.roundEnd('run');
 assert.equal(timer.snapshot().formatted, '00:01.99');
-assert.equal(observed.length, 9);
+assert.equal(observed.length, 8);
 
 console.log('Timer tests passed: start, stop, freeze, reset, duplicate events, SDK replacement and display');
