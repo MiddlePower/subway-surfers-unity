@@ -42,6 +42,20 @@ public class InventorySave : DataManager<InventorySave> // TypeDefIndex: 13
     public static int GetAmount(UpgradeType powerup) { }
     public static void IncreaseAmount(UpgradeType powerup, int quantity) { }
 }
+// Namespace: Data.Managers
+public static class CharacterManager // TypeDefIndex: 16
+{
+    // Methods
+    public static bool IsCharacterOwned(Characters.CharacterId characterId) { }
+    public static void UnlockCharacter(Characters.CharacterId characterId) { }
+}
+// Namespace: Data.Managers
+public static class BoardManager // TypeDefIndex: 17
+{
+    // Methods
+    public static bool IsBoardOwned(Boards.BoardId boardId) { }
+    public static void UnlockBoard(Boards.BoardId boardId) { }
+}
 // Namespace: SYBO.Subway
 public class Game : MonoBehaviour // TypeDefIndex: 14
 {
@@ -108,6 +122,21 @@ public class Game.<OtherCoroutine>d__22 // TypeDefIndex: 17
         with self.assertRaises(RuntimeError):
             verify_parameter_types(self.records,
                 'Data.Save.InventorySave$$IncreaseAmount', ('int', 'UpgradeType'))
+
+    def test_collection_unlock_method_declarations(self):
+        expected = {
+            "Data.Managers.CharacterManager$IsCharacterOwned":
+                ("Characters.CharacterId",),
+            "Data.Managers.CharacterManager$UnlockCharacter":
+                ("Characters.CharacterId",),
+            "Data.Managers.BoardManager$IsBoardOwned":
+                ("Boards.BoardId",),
+            "Data.Managers.BoardManager$UnlockBoard":
+                ("Boards.BoardId",),
+        }
+        for method, params in expected.items():
+            with self.subTest(method=method):
+                self.assertTrue(verify_parameter_types(self.records, method, params))
 
     def test_signed_leb_large_item_amount(self):
         raw = signed_leb(MAX_ITEMS)
