@@ -25,6 +25,16 @@
   const challengeSettings = document.getElementById('challenge-settings');
   const coinModeToggle = document.getElementById('coin-mode-toggle');
   const coinModeDescription = document.getElementById('coin-mode-description');
+  const recordsIntro = document.getElementById('records-intro-description');
+  const hoverboardRule = document.querySelector('.hoverboard-rule');
+  if (recordsIntro && isChallenge && coinMode === 'timer-only') {
+    recordsIntro.textContent =
+      'One coin freezes the clock, but you can keep playing. Survive as long as you can without coins or hoverboards.';
+  }
+  if (hoverboardRule && document.body?.dataset.hoverboardHook === 'unavailable') {
+    hoverboardRule.textContent =
+      'This build could not confirm a hoverboard event hook. The hoverboard timer rule needs further testing.';
+  }
 
   // Changing the compiled Unity rule requires loading its companion private
   // test build. Both game pages share the same browser-local records.
