@@ -101,6 +101,11 @@ def main():
     if original_page.count('SanFrancisco.json') != 1:
         raise ValueError('Expected one SanFrancisco.json reference in root index.html')
     page = original_page.replace('SanFrancisco.json', config_filename)
+    # Mark only this verified coin-death build as challenge mode. The base
+    # unmodified game must not contribute times to the No-Coin record.
+    if page.count('data-run-mode="standard"') != 1:
+        raise ValueError('Missing challenge mode marker in index.html')
+    page = page.replace('data-run-mode="standard"', 'data-run-mode="no-coin"')
 
     print(f'\nCoin.Pickup original WASM body: {len(old_body)} bytes; replacement: {len(new_body)} bytes')
     print('Test action: Game.Die(Game.Instance, null) immediately upon Coin.Pickup')
