@@ -725,3 +725,69 @@ Inspect the two output text files before implementing local item
 grants. Save backups, confirm the game uses local rather than
 cloud-authoritative ownership, and do not commit modified commercial
 game binaries or publish them without authorization.
+
+## Experimental private local inventory-grant No-Coin build
+
+The uploaded detailed IL2CPP report shows these exact declarations:
+
+- \`InventorySave.SetKeys(int newAmount)\` and \`InventorySave.get_keys()\`
+- \`InventorySave.GetAmount(UpgradeType)\` and \`IncreaseAmount(UpgradeType, int)\`
+- \`CharacterManager.UnlockCharacter(Characters.CharacterId)\` and
+  \`IsCharacterOwned(Characters.CharacterId)\`
+- \`BoardManager.UnlockBoard(Boards.BoardId)\` and
+  \`IsBoardOwned(Boards.BoardId)\`
+- \`UpgradeType.hoverboard = 1\`
+- \`UpgradeType.headstart2000 = 3\`
+- \`UpgradeType.scorebooster = 15\`
+
+\`tools/try_nocoin_unlocks.py\` is an independent, reversible **local-only
+test generator**. It verifies method signatures and the enums in the
+local dump before generating any build. The generated
+\`nocoin-unlocks.html\` keeps the previously verified
+\`Coin.Pickup -> Game.Die(Game.Instance)\` behavior.
+
+The test prepends a grant routine to \`SYBO.Subway.Game.StartNewGame\`,
+which should execute when a new run begins **after** loading the save.
+This assumption and the inventory effects are **not yet tested in the
+real game**. No item grants occur merely from opening the page if that
+method has not yet executed.
+
+The routine checks the existing balance/ownership before changing it:
+
+- keys: raise to 1,000,000,000 using \`SetKeys\` only if below the target
+- consumable hoverboards, headstarts and score boosters: use
+  \`GetAmount\` and \`IncreaseAmount(type, target-current)\` if
+  \`0 <= current < 1,000,000,000\`, to avoid overflowing on repeated runs
+- characters and boards: if not owned, use \`UnlockCharacter(id)\` or
+  \`UnlockBoard(id)\` for IDs parsed from \`dump.cs\` enum constants
+- **alternate outfits not yet unlocked** because the source report does
+  not establish valid outfit indices per character
+
+For the first test, use an **isolated private/incognito browser
+session** to avoid altering any important existing local game save.
+Even though the generated WASM stays local, the game's save may
+persist changes within the current browser profile.
+
+\`\`\`powershell
+git switch experiment/webgl-bridge-inspector
+git pull
+py -m unittest discover -s tools -p "test_nocoin_unlocks.py"
+py tools/try_nocoin_unlocks.py --items-only
+py tools/try_nocoin_unlocks.py --items-only --write
+py -m http.server 8000
+\`\`\`
+
+Then open **http://localhost:8000/nocoin-unlocks.html** and start a run
+to trigger the grant routine. Check in-game keys and consumable amounts.
+
+If the initial items-only version works, stop the server, run
+\`py tools/try_nocoin_unlocks.py --max-characters 5 --max-boards 5 --write\`
+as a small character/board test, and then
+\`py tools/try_nocoin_unlocks.py --write\` for all enum IDs. Restart
+the local server or refresh the page after each change.
+
+The old known-working \`nocoin-gameover.html\` is unaffected, and the
+original Unity assets are never overwritten. The generated test
+WASM files are ignored by Git. All of the above is experimental,
+and must not be publicly deployed without the commercial game's
+distribution rights.
