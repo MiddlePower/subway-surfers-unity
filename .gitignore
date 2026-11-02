@@ -18,3 +18,12 @@ Build/SanFrancisco/SanFrancisco.nocoin.unlocks.*.wasm.code.unityweb
 
 # Separate full character + board unlock experiment
 nocoin-unlocks-full.html
+
+# Generated private local challenge-rule variants and bridge runtime
+nocoin-unlocks-timer.html
+nocoin-unlocks-items-timer.html
+4399.challenge.*.js
+Build/SanFrancisco/SanFrancisco.nocoin.game-over.*.json
+Build/SanFrancisco/SanFrancisco.nocoin.game-over.*.wasm.code.unityweb
+Build/SanFrancisco/SanFrancisco.nocoin.timer-only.*.json
+Build/SanFrancisco/SanFrancisco.nocoin.timer-only.*.wasm.code.unityweb
