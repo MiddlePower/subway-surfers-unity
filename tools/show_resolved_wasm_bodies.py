@@ -41,6 +41,9 @@ def main():
     p.add_argument('script_json', type=Path)
     p.add_argument('--max-bytes', type=int, default=160,
                    help='Maximum bytecode bytes to print per function')
+    p.add_argument('--name', action='append', default=[],
+                   help='Inspect one exact script.json method name (repeatable); '
+                        'otherwise inspect the default coin/death targets')
     args = p.parse_args()
     if not 8 <= args.max_bytes <= 2000:
         p.error('--max-bytes must be between 8 and 2000')
@@ -48,7 +51,7 @@ def main():
     script = json.loads(args.script_json.read_text(encoding='utf-8-sig'))
     types, func_types, imported, table, bodies, diagnostics = analyze(wasm)
 
-    for name in TARGETS:
+    for name in (args.name or TARGETS):
         print('\n=== ' + name + ' ===')
         idx, problem = map_target(
             wasm, script, name, types, func_types,
