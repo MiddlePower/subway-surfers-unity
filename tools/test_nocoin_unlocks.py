@@ -100,6 +100,46 @@ public class Game.<OtherCoroutine>d__22 // TypeDefIndex: 17
             records, 'SYBO.Subway.Game$$StartNewGame', (),
             expect_static=False))
 
+    def test_empty_global_namespace_resets_previous_namespace(self):
+        # Il2CppDumper commonly emits a blank namespace marker as
+        # "// Namespace: " (whose trailing space is removed by strip()).
+        # Without resetting on "// Namespace:", the formerly global
+        # Characters.CharacterId and Boards.BoardId enums are incorrectly
+        # placed in a previous namespace such as Data.Managers.
+        metadata = """// Namespace: Data.Managers
+public static class CharacterManager // TypeDefIndex: 201
+{
+}
+// Namespace:
+public enum Characters.CharacterId // TypeDefIndex: 202
+{
+    // Fields
+    public const Characters.CharacterId Jake = 0;
+    public const Characters.CharacterId Tricky = 1;
+}
+// Namespace: 
+public enum Boards.BoardId // TypeDefIndex: 203
+{
+    // Fields
+    public const Boards.BoardId OldSkool = 3;
+    public const Boards.BoardId SuperBoard = 5;
+}
+// Namespace: Info
+public enum UpgradeType // TypeDefIndex: 204
+{
+    // Fields
+    public const UpgradeType hoverboard = 1;
+    public const UpgradeType headstart2000 = 3;
+    public const UpgradeType scorebooster = 15;
+}
+"""
+        records = find_records(metadata)
+        self.assertEqual(enum_ids(records, 'Characters.CharacterId'), [0, 1])
+        self.assertEqual(enum_ids(records, 'Boards.BoardId'), [3, 5])
+        self.assertEqual(exact_record(records, 'Characters.CharacterId')['kind'],
+                         'enum')
+        verify_upgrade_ids(records)
+
     def test_page_modes_do_not_overwrite_each_other(self):
         self.assertEqual(output_page_for(True).name, "nocoin-unlocks.html")
         self.assertEqual(output_page_for(False).name, "nocoin-unlocks-full.html")
