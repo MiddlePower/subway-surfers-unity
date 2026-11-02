@@ -839,3 +839,39 @@ In the website UI, the No-Coin logo/branding (symbol plus text) is
 or fullscreen gameplay. The fullscreen button stays in the top-right
 corner, and its exit appearance remains hover/focus-only in fullscreen.
 The run timer, WASD controls and scrollable records remain.
+
+## Blank global namespace fix for character/board enum lookup
+
+The first full-unlock dry run successfully verified all 12 relevant
+WASM method targets and printed the matching C# method declarations,
+but failed before writing an asset:
+
+\`\`\`text
+RuntimeError: Expected one IL2CPP type Characters.CharacterId; found 0
+\`\`\`
+
+The cause was a bug in \`find_records\`: it called \`strip()\` on each
+\`dump.cs\` line, but recognized namespace comments only if the resulting
+string began \`// Namespace: \` (with a trailing space). An empty/global
+namespace entry thus became \`// Namespace:\`, which was not recognized.
+This caused a type like \`Characters.CharacterId\` to inherit the last
+nonempty namespace.
+
+The parser now recognizes \`// Namespace:\` whether or not text follows
+the colon and resets to \`""\` for global types. Regression tests cover
+both \`Characters.CharacterId\` and \`Boards.BoardId\` under blank
+namespace markers, following a nonempty namespace.
+
+Retry from the experiment branch, with a read-only dry run **first**:
+
+\`\`\`powershell
+git pull
+py -m unittest discover -s tools -p "test_nocoin_unlocks.py"
+py tools/try_nocoin_unlocks.py
+\`\`\`
+
+After a successful dry run, \`py tools/try_nocoin_unlocks.py --write\`
+creates the separate \`nocoin-unlocks-full.html\` local test page.
+This remains experimental: game ownership and visual unlock UI need
+to be confirmed in an isolated profile. No assets were produced by
+the failed dry run.
