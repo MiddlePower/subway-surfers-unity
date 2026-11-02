@@ -1010,3 +1010,7 @@ investigate a game-specific speed and hoverboard activation hook.
 Both the effect of Unity timeScale and the input fallback need live
 browser verification. No generated commercial assets are committed
 or meant for public redistribution.
+
+Blitz personal bests are saved separately in browser localStorage under
+no-coin-challenge.records.blitz.v1. The original normal-speed personal
+best stays under no-coin-challenge.records.v1, untouched.
