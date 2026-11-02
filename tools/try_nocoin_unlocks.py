@@ -531,11 +531,9 @@ def main():
     # confirmed working billion-item and character/board experiment.
     start_pos, start_size = bodies[funcs["start"] - imports]
     start_original = game_bytes[start_pos:start_pos + start_size]
-    start_body = prepend_to_existing_body(
-        start_original,
-        lambda scratch: build_inventory_preamble(funcs, scratch, characters, boards),
-        parameter_count=2,
-    )
+    # Each variant gets a fresh StartNewGame body. Blitz injects a native
+    # Unity timeScale call after the existing inventory/character unlocks.
+    # Normal variants keep their original default Unity speed.
 
     # Variant A: existing normal coin-death behavior, but with optional
     # precise hoverboard invalidation. This remains the default.
@@ -559,21 +557,27 @@ def main():
         raise RuntimeError("Coin pickup mismatch across variants")
 
     variants = {}
-    for mode, patched in (("game-over", death_wasm),
-                          ("timer-only", timer_wasm)):
-        patched, old_start = replace_function_body(
-            patched, funcs["start"], imports, start_body)
-        if old_start != start_original:
-            raise RuntimeError("Original Game.StartNewGame method mismatch")
-        patched = patch_hoverboard_event(
-            patched, hoverboard_hook, callback_index, imports)
-
-        parsed = analyze(patched)
-        if (parsed[1] != metadata[1] or parsed[2] != metadata[2]
-                or parsed[3] != metadata[3]
-                or len(parsed[4]) != len(bodies)):
-            raise RuntimeError("WASM structure check failed for " + mode)
-        variants[mode] = patched
+    for blitz_enabled in ([False, True] if args.blitz else [False]):
+        for mode, coin_variant in (("game-over", death_wasm),
+                                   ("timer-only", timer_wasm)):
+            start_body = prepend_to_existing_body(
+                start_original,
+                lambda scratch: build_inventory_preamble(
+                    funcs, scratch, characters, boards,
+                    blitz_setter if blitz_enabled else None),
+                parameter_count=2)
+            patched, old_start = replace_function_body(
+                coin_variant, funcs["start"], imports, start_body)
+            if old_start != start_original:
+                raise RuntimeError("Original Game.StartNewGame method mismatch")
+            patched = patch_hoverboard_event(
+                patched, hoverboard_hook, callback_index, imports)
+            parsed = analyze(patched)
+            if (parsed[1] != metadata[1] or parsed[2] != metadata[2]
+                    or parsed[3] != metadata[3]
+                    or len(parsed[4]) != len(bodies)):
+                raise RuntimeError("WASM structure check failed")
+            variants[(mode, blitz_enabled)] = patched
 
     # Inject only a tiny reserved-marker handler into a GENERATED copy of
     # Unity's browser runtime; never overwrite tracked 4399.z.js.
@@ -590,31 +594,47 @@ def main():
         raise ValueError("Unexpected root page template; refusing to generate")
 
     outputs = []
-    destination = {"game-over": output_page, "timer-only": timer_page}
-    for mode, wasm_blob in variants.items():
+    destination = {
+        ("game-over", False): output_page,
+        ("timer-only", False): timer_page,
+    }
+    if args.blitz:
+        if args.items_only:
+            raise RuntimeError("Blitz and --items-only are not combined; use the full inventory build")
+        destination[("game-over", True)] = OUTPUT_PAGE_BLITZ
+        destination[("timer-only", True)] = OUTPUT_PAGE_BLITZ_TIMER
+    for (mode, blitz_enabled), wasm_blob in variants.items():
         checksum = hashlib.sha256(wasm_blob).hexdigest()[:12]
+        variant_name = mode + (".blitz" if blitz_enabled else "")
         asset = DEFAULT_ASSET.with_name(
-            f"SanFrancisco.nocoin.{mode}.{checksum}.wasm.code.unityweb")
+            f"SanFrancisco.nocoin.{variant_name}.{checksum}.wasm.code.unityweb")
         config_path = DEFAULT_CONFIG.with_name(
-            f"SanFrancisco.nocoin.{mode}.{checksum}.json")
+            f"SanFrancisco.nocoin.{variant_name}.{checksum}.json")
         cfg = dict(config)
         cfg["wasmCodeUrl"] = asset.name
         other_mode = "timer-only" if mode == "game-over" else "game-over"
+        coin_target = destination[(other_mode, blitz_enabled)].name
+        blitz_target = (
+            destination[(mode, not blitz_enabled)].name if args.blitz else "")
         page = template.replace("SanFrancisco.json", config_path.name)
         page = page.replace("4399.z.js", runtime_path.name)
         page = page.replace(
             'data-run-mode="standard"',
             ('data-run-mode="no-coin" data-coin-mode="' + mode +
-             '" data-coin-mode-target="' + destination[other_mode].name +
+             '" data-coin-mode-target="' + coin_target +
+             '" data-blitz-mode="' + ("on" if blitz_enabled else "off") +
+             '" data-blitz-target="' + blitz_target +
              '" data-hoverboard-hook="' +
              ("active" if hoverboard_hook else "unavailable") + '"'))
-        outputs.append((mode, destination[mode], asset, config_path, cfg,
-                        page, wasm_blob))
+        outputs.append((mode, destination[(mode,blitz_enabled)], asset,
+                        config_path, cfg, page, wasm_blob))
 
-    print("Original WASM unchanged, separate game-over and timer-only builds.")
-    print("Coin rule: change using the scroll-down setting (reload required).")
-    print("Hoverboard detection:", "hooked" if hoverboard_hook else "UNAVAILABLE")
-    print("Output pages:", output_page, "and", timer_page)
+    print("Original WASM unchanged; generated mode pages:", ", ".join(str(x[1]) for x in outputs))
+    print("Coin rule can be changed below the game (reload required).")
+    print("Hoverboard detection:", "hooked" if hoverboard_hook else "fallback controls")
+    if args.blitz:
+        print(f"Blitz uses native Unity timeScale={BLITZ_TIMESCALE} at Game.StartNewGame; "
+              "game-specific speed scaling needs live verification.")
     print("Local runtime:", runtime_path)
     if not args.write:
         print("Dry-run complete; add --write to generate private test files.")
@@ -623,7 +643,7 @@ def main():
     runtime_path.write_text(runtime_js, encoding="utf-8")
     # Preserve the previously working generated page before replacing it.
     # Its content-addressed WASM and JSON remain on disk as well.
-    for old_page in (output_page, timer_page):
+    for old_page in destination.values():
         if old_page.exists():
             previous = old_page.read_bytes()
             backup = old_page.with_name(
