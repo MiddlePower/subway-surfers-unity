@@ -287,3 +287,42 @@ button:focus-visible, a:focus-visible {
     transition: none;
   }
 }
+
+/* Configurable coin rule: shown below the game only on generated
+   private No-Coin pages. The selected mode loads a separate WASM asset. */
+.challenge-settings[hidden] { display: none !important; }
+.challenge-settings {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  margin-top: 32px;
+  padding: 26px 30px;
+  border: 1px solid rgba(92,227,198,.35);
+  border-radius: 18px;
+  background: linear-gradient(110deg, #152d35, #112131 72%);
+}
+.settings-summary { max-width: 710px; }
+.settings-summary h2 { margin: 8px 0 10px; font-size: clamp(19px,2.5vw,27px); line-height: 1.2; }
+.settings-summary p:not(.section-eyebrow) { margin: 0 0 8px; color: #a9c1cd; font-size: 13px; }
+.settings-summary .hoverboard-rule { color: #72ddc7 !important; }
+.mode-toggle {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 12px 20px;
+  text-decoration: none;
+  background: #5ce3c6;
+  color: #06211f;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 850;
+  text-align: center;
+}
+.mode-toggle:hover { background: #85f4da; }
+@media (max-width: 750px) {
+  .challenge-settings { flex-direction: column; align-items: stretch; gap: 18px; padding: 22px; }
+  .mode-toggle { width: 100%; }
+}
