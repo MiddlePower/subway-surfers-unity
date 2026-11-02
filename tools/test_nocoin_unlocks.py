@@ -125,13 +125,13 @@ public class Game.<OtherCoroutine>d__22 // TypeDefIndex: 17
 
     def test_collection_unlock_method_declarations(self):
         expected = {
-            "Data.Managers.CharacterManager$IsCharacterOwned":
+            "Data.Managers.CharacterManager$$IsCharacterOwned":
                 ("Characters.CharacterId",),
-            "Data.Managers.CharacterManager$UnlockCharacter":
+            "Data.Managers.CharacterManager$$UnlockCharacter":
                 ("Characters.CharacterId",),
-            "Data.Managers.BoardManager$IsBoardOwned":
+            "Data.Managers.BoardManager$$IsBoardOwned":
                 ("Boards.BoardId",),
-            "Data.Managers.BoardManager$UnlockBoard":
+            "Data.Managers.BoardManager$$UnlockBoard":
                 ("Boards.BoardId",),
         }
         for method, params in expected.items():
