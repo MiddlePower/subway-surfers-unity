@@ -522,3 +522,57 @@ on this specific Unity build; confirm their behavior locally. This
 addition modifies only HTML/JavaScript, not the previously tested
 coin-triggered \`Game.Die\` WebAssembly patch. Keep generated commercial
 game files private.
+
+## Run timer: starts on run, freezes at death or coin-triggered game-over
+
+\`tools/run-timer.js\` adds a visible, non-clickable stopwatch at the top
+center of both the normal game page and the regenerated No-Coin page.
+
+It listens for the Unity build's **existing** Poki SDK run lifecycle
+calls (confirmed by previous bridge logs):
+
+- \`PokiSDK.gameplayStart\` or \`PokiSDK.roundStart('run')\`: start at zero
+- \`PokiSDK.gameplayStop\` or \`PokiSDK.roundEnd('run')\`: stop and freeze
+- the next run-start resets the clock to \`00:00.00\`
+- duplicate start and stop events do not reset or double-stop a run
+
+The display reads \`NO-COIN TIMER\` while waiting, \`RUN TIME\` during
+play, and \`FINAL TIME\` after game-over. It shows minutes, seconds and
+hundredths (\`MM:SS.hh\`). It uses \`performance.now()\` and
+\`requestAnimationFrame\` for smooth monotonic elapsed time.
+
+This is a browser overlay, **not** a change to the WebAssembly coin
+patch. The existing, locally tested coin -> \`Game.Die\` behavior stays
+unchanged. In the actual browser the clock stops on the game's own
+reported run-end event, so there may be a delay if Unity signals
+\`gameplayStop\`/ \`roundEnd\` after a death animation rather than at
+the first collision frame.
+
+The diagnostic bridge inspector now subscribes to the timer's
+\`runner-sdk-lifecycle\` event instead of wrapping these four SDK methods
+separately; that avoids recursive wrapper stacking when \`?inspect=1\`.
+
+**Update and regenerate the No-Coin game page**, which is produced from
+the repository's \`index.html\`:
+
+\`\`\`powershell
+git switch experiment/webgl-bridge-inspector
+git pull
+py tools/try_nocoin_gameover.py --write
+py -m http.server 8000
+\`\`\`
+
+Open **http://localhost:8000/nocoin-gameover.html?inspect=1** in a
+fresh private/incognito window, start a run, and collect a coin or
+naturally die to verify the final elapsed time freezes.
+
+Standalone synthetic JavaScript lifecycle test (when Node.js is
+installed):
+
+\`\`\`powershell
+node tools/test_run_timer.cjs
+\`\`\`
+
+The mocked runtime tests have been checked; **the overlay still needs
+a user-side test in the live Unity game** to confirm the precise timing
+of its SDK game-over event.
