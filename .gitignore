@@ -27,3 +27,6 @@ Build/SanFrancisco/SanFrancisco.nocoin.game-over.*.json
 Build/SanFrancisco/SanFrancisco.nocoin.game-over.*.wasm.code.unityweb
 Build/SanFrancisco/SanFrancisco.nocoin.timer-only.*.json
 Build/SanFrancisco/SanFrancisco.nocoin.timer-only.*.wasm.code.unityweb
+
+# Local backups of previous working generated challenge pages
+nocoin-unlocks*.backup-*.html
