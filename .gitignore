@@ -15,3 +15,6 @@ Build/SanFrancisco/SanFrancisco.nocoin.gameover.*.wasm.code.unityweb
 nocoin-unlocks.html
 Build/SanFrancisco/SanFrancisco.nocoin.unlocks.*.json
 Build/SanFrancisco/SanFrancisco.nocoin.unlocks.*.wasm.code.unityweb
+
+# Separate full character + board unlock experiment
+nocoin-unlocks-full.html
