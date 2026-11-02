@@ -7,7 +7,12 @@
   if (new URLSearchParams(location.search).get('inspect') !== '1') return;
   const events = [];
   const hooked = Symbol('bridge-probe');
-  const methods = ['customEvent', 'sendHighscore', 'gameplayStart', 'gameplayStop', 'roundStart', 'roundEnd'];
+  // The timer owns lifecycle SDK hooks to avoid recursive hook stacking.
+  const methods = ['customEvent', 'sendHighscore'];
+  window.addEventListener('runner-sdk-lifecycle', event => {
+    const payload = event.detail || {};
+    if (typeof payload.name === 'string') log('PokiSDK.' + payload.name, payload.args || []);
+  });
   let output;
 
   function log(name, args = []) {
