@@ -5,6 +5,7 @@ import unittest
 from resolve_wasm_methods import Reader
 from try_nocoin_unlocks import (
     MAX_ITEMS, build_inventory_preamble, enum_ids, find_records, exact_record,
+    output_page_for,
     prepend_to_existing_body, signed_leb, verify_parameter_types,
     verify_upgrade_ids,
 )
@@ -82,8 +83,12 @@ public class Game.<OtherCoroutine>d__22 // TypeDefIndex: 17
         self.assertIn('SYBO.Subway.Game.<OtherCoroutine>d__22',
                       [r['name'] for r in records])
         self.assertIn('StartNewGame()', verify_parameter_types(
-            records, 'SYBO.Subway.Game$StartNewGame', (),
+            records, 'SYBO.Subway.Game$$StartNewGame', (),
             expect_static=False))
+
+    def test_page_modes_do_not_overwrite_each_other(self):
+        self.assertEqual(output_page_for(True).name, "nocoin-unlocks.html")
+        self.assertEqual(output_page_for(False).name, "nocoin-unlocks-full.html")
 
     def test_enum_ids_from_metadata(self):
         verify_upgrade_ids(self.records)
