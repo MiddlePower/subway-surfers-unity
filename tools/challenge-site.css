@@ -88,29 +88,11 @@ button:focus-visible, a:focus-visible {
   z-index: 60;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 20px;
   padding: max(22px, env(safe-area-inset-top)) 28px 85px;
-  background: linear-gradient(180deg, rgba(4,12,23,.75) 0%, rgba(4,12,23,0) 100%);
   pointer-events: none;
 }
-.brand-lockup { display: flex; align-items: center; gap: 11px; user-select: none; }
-.brand-symbol {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 41px;
-  height: 41px;
-  border-radius: 12px;
-  font-size: 21px;
-  color: #03231c;
-  background: var(--mint);
-  box-shadow: 0 4px 22px rgba(92,227,198,.2);
-}
-.brand-text { display: flex; flex-direction: column; line-height: 1.04; letter-spacing: .13em; }
-.brand-text strong { font-size: 15px; font-weight: 850; }
-.brand-text span { font-size: 9px; color: #bfdfdd; letter-spacing: .33em; margin-top: 6px; }
-
 .fullscreen-button {
   pointer-events: auto;
   display: inline-flex;
@@ -256,9 +238,6 @@ button:focus-visible, a:focus-visible {
 }
 @media (max-width: 550px) {
   .stage-header { padding: 16px 14px 70px; }
-  .brand-symbol { width: 35px; height: 35px; font-size: 18px; }
-  .brand-text strong { font-size: 12px; }
-  .brand-text span { font-size: 8px; }
   .fullscreen-button { padding: 8px 10px; font-size: 11px; }
   #challenge-stage #no-coin-timer { top: 70px !important; }
   .records-section { padding: 64px 16px 20px; }
@@ -278,9 +257,7 @@ button:focus-visible, a:focus-visible {
 /* Fullscreen is a clean gameplay-only view. Keep the exit hitbox present,
    but hide its appearance until the cursor reaches its top-right position.
    Keyboard focus also reveals it for accessibility. */
-#challenge-stage:fullscreen .brand-lockup,
 #challenge-stage:fullscreen .scroll-prompt,
-#challenge-stage:-webkit-full-screen .brand-lockup,
 #challenge-stage:-webkit-full-screen .scroll-prompt {
   display: none !important;
 }
