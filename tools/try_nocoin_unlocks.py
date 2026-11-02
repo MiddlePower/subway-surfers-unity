@@ -109,8 +109,13 @@ def find_records(text):
     records = []
     for line in text.splitlines():
         stripped = line.strip()
-        if stripped.startswith("// Namespace: "):
-            namespace = stripped[len("// Namespace: "):]
+        # Blank global namespaces are written as "// Namespace: " in
+        # dump.cs, but strip() removes the trailing space. The earlier
+        # parser failed to reset namespace on "// Namespace:" and thus
+        # mislabeled global types like Characters.CharacterId as belonging
+        # to the last nonempty namespace.
+        if stripped.startswith("// Namespace:"):
+            namespace = stripped[len("// Namespace:"):].strip()
             continue
         if "// TypeDefIndex:" in stripped:
             # Capture the entire C# type token, including compiler-generated
@@ -138,7 +143,21 @@ def exact_record(records, fullname):
     # Il2CppDumper's nested type name already contains its outer class.
     matches = [r for r in records if r["name"] == fullname]
     if len(matches) != 1:
-        raise RuntimeError(f"Expected one IL2CPP type {fullname}; found {len(matches)}")
+        # Show declaration names (not only 0 matches), making it possible
+        # to diagnose a genuinely different enum/type layout in the dump.
+        type_token = fullname.rsplit(".", 1)[-1]
+        nearby = sorted({
+            r["name"] + " [" + r["kind"] + "]"
+            for r in records
+            if r["name"].endswith("." + type_token)
+            or r["simple"] == fullname
+            or r["simple"].endswith("." + type_token)
+        })
+        preview = ", ".join(nearby[:15]) if nearby else "none"
+        raise RuntimeError(
+            f"Expected one IL2CPP type {fullname}; found {len(matches)}. "
+            f"Nearby declared types: {preview}. "
+            "No IDs will be guessed from unrelated types.")
     return matches[0]
 
 
