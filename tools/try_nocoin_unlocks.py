@@ -34,7 +34,11 @@ from try_nocoin_gameover import build_die_via_game_instance, COIN_PICKUP, GAME_D
 MAX_ITEMS = 1_000_000_000
 SCRIPT = Path("local-analysis/dump/script.json")
 DUMP = Path("local-analysis/dump/dump.cs")
-OUTPUT_PAGE = Path("nocoin-unlocks.html")
+# Keep the successful items-only experiment available as a fallback.
+# The full character + board unlock experiment gets a separate page so
+# browser/loader caches cannot silently show the items-only version.
+OUTPUT_PAGE_ITEMS = Path("nocoin-unlocks.html")
+OUTPUT_PAGE_FULL = Path("nocoin-unlocks-full.html")
 
 # UpgradeType enum values are checked against dump.cs, not assumed to match
 # some other Subway Surfers build.
@@ -313,6 +317,9 @@ def main():
 
     characters = [] if args.items_only else enum_ids(records, "Characters.CharacterId")
     boards = [] if args.items_only else enum_ids(records, "Boards.BoardId")
+    if not args.items_only and (not characters or not boards):
+        raise RuntimeError("Full unlock test requires verified character and board IDs")
+    output_page = OUTPUT_PAGE_ITEMS if args.items_only else OUTPUT_PAGE_FULL
     if args.max_characters:
         characters = characters[:args.max_characters]
     if args.max_boards:
@@ -320,6 +327,11 @@ def main():
     print(f"Requested grants: keys={MAX_ITEMS}, "
           f"hoverboard/headstart/scorebooster={MAX_ITEMS} each, "
           f"character IDs={len(characters)}, board IDs={len(boards)}")
+    if not args.items_only:
+        print("Character ID sample:", characters[:12])
+        print("Board ID sample:", boards[:12])
+        print("Character/board grants activate when you START A RUN. "
+              "Check the character and board selection menus AFTER returning to the menu.")
     print("Note: Alternate character outfits are NOT yet unlocked; "
           "valid per-character outfit counts have not been verified.")
 
@@ -375,11 +387,11 @@ def main():
 
     asset_file.write_bytes(encode_with_original_compression(patched, compression))
     config_file.write_text(json.dumps(original_config, indent=2), encoding="utf-8")
-    OUTPUT_PAGE.write_text(page, encoding="utf-8")
+    output_page.write_text(page, encoding="utf-8")
     print("Created:", asset_file)
     print("Created:", config_file)
-    print("Created:", OUTPUT_PAGE)
-    print("Open http://localhost:8000/nocoin-unlocks.html in an isolated browser profile.")
+    print("Created:", output_page)
+    print(f"Open http://localhost:8000/{output_page.name} in an isolated browser profile.")
     print("Do not commit/redistribute these commercial game assets.")
 
 
