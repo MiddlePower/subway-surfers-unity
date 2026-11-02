@@ -1,12 +1,12 @@
-
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Subway Surfers</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#080f1d">
+    <title>No-Coin Challenge</title>
+    <link rel="stylesheet" href="tools/challenge-site.css">
     <script type="text/javascript" src="4399.z.js"></script>
     <script>
         window.config = {
@@ -14,12 +14,9 @@
             debug: false,
             maxRatio: 16 / 9,
             minRatio: 9 / 16,
-
             title: 'Subway Surfers: San Francisco',
-
             unityVersion: '2019.4.18f1',
-            unityWebglBuildUrl: 'Build\/SanFrancisco\/SanFrancisco.json',
-
+            unityWebglBuildUrl: 'Build/SanFrancisco/SanFrancisco.json',
             fileSize: 35,
             cachedDecompressedFileSizes: {
                 'SanFrancisco.asm.code.unityweb': 9077143,
@@ -27,21 +24,96 @@
                 'SanFrancisco.asm.memory.unityweb': 951447,
                 'SanFrancisco.data.unityweb': 18323917,
                 'SanFrancisco.wasm.code.unityweb': 7279617,
-                'SanFrancisco.wasm.framework.unityweb': 90693,
-            },
+                'SanFrancisco.wasm.framework.unityweb': 90693
+            }
         };
     </script>
 </head>
+<body data-run-mode="standard">
+    <main id="challenge-app">
+        <section id="challenge-stage" aria-label="Game">
+            <div id="challenge-game" aria-label="Unity game area"></div>
+            <header class="stage-header">
+                <div class="brand-lockup">
+                    <span class="brand-symbol" aria-hidden="true">✦</span>
+                    <span class="brand-text">
+                        <strong>NO-COIN</strong>
+                        <span>CHALLENGE</span>
+                    </span>
+                </div>
+                <button id="challenge-fullscreen" class="fullscreen-button" type="button" aria-label="Enter game fullscreen">
+                    <span class="fullscreen-symbol" aria-hidden="true">⛶</span>
+                    <span>Fullscreen</span>
+                </button>
+            </header>
+            <a href="#records" class="scroll-prompt" aria-label="Scroll down to your personal best">
+                <span>YOUR BEST SCORE</span>
+                <span class="scroll-chevron" aria-hidden="true">⌄</span>
+            </a>
+        </section>
 
-<body>
+        <section id="records" class="records-section" aria-labelledby="records-heading">
+            <div class="section-inner">
+                <div class="section-intro">
+                    <p class="section-eyebrow">PERSONAL RECORDS <span class="eyebrow-line" aria-hidden="true"></span></p>
+                    <h1 id="records-heading">How long can you survive?</h1>
+                    <p>One coin ends the run. Every second without collecting one counts.</p>
+                </div>
+                <div class="stat-grid" aria-label="Personal run statistics">
+                    <article class="record-card record-best">
+                        <div class="card-topline"><span>PERSONAL BEST</span><span class="stat-icon" aria-hidden="true">★</span></div>
+                        <p id="best-score" class="stat-value" aria-live="polite">--:--.--</p>
+                        <p class="card-caption">Your longest coin-free run</p>
+                        <span class="record-underline" aria-hidden="true"></span>
+                    </article>
+                    <article class="record-card">
+                        <div class="card-topline"><span>LAST RUN</span><span class="stat-icon" aria-hidden="true">↺</span></div>
+                        <p id="last-score" class="stat-value">--:--.--</p>
+                        <p class="card-caption">Your latest completed attempt</p>
+                    </article>
+                    <article class="record-card">
+                        <div class="card-topline"><span>RUNS COMPLETED</span><span class="stat-icon" aria-hidden="true">≋</span></div>
+                        <p id="total-runs" class="stat-value">0</p>
+                        <p class="card-caption">Attempts recorded on this browser</p>
+                    </article>
+                </div>
+
+                <div class="section-lower">
+                    <article class="history-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <p class="section-eyebrow">RECENT ATTEMPTS</p>
+                                <h2>Run history</h2>
+                            </div>
+                            <span class="local-tag">LOCAL RECORDS</span>
+                        </div>
+                        <ol id="run-history" class="history-list" aria-label="Recent runs">
+                            <li class="history-empty">Finish a challenge run to see it here.</li>
+                        </ol>
+                        <p id="storage-message" class="storage-note">Personal bests are saved in this browser, not on a server.</p>
+                    </article>
+
+                    <aside class="extras-panel" id="future-features" aria-labelledby="extra-heading">
+                        <p class="section-eyebrow">BUILT FOR WHAT'S NEXT</p>
+                        <h2 id="extra-heading">More than a single run.</h2>
+                        <p>This space is ready for more challenges and game features later.</p>
+                        <div id="challenge-modules" class="module-list">
+                            <div class="module-placeholder"><span class="module-icon">◎</span><span>Challenge modes</span><span class="module-state">FUTURE</span></div>
+                            <div class="module-placeholder"><span class="module-icon">⌁</span><span>Advanced statistics</span><span class="module-state">FUTURE</span></div>
+                            <div class="module-placeholder"><span class="module-icon">◈</span><span>Community features</span><span class="module-state">FUTURE</span></div>
+                        </div>
+                    </aside>
+                </div>
+                <footer class="challenge-footer">
+                    <span>NO-COIN CHALLENGE</span>
+                    <a href="#challenge-stage">BACK TO GAME ↑</a>
+                </footer>
+            </div>
+        </section>
+    </main>
+    <script src="tools/challenge-site.js"></script>
     <script src="tools/wasd-controls.js"></script>
     <script src="tools/run-timer.js"></script>
-    <script src="tools/bridge-inspector.js"></script>
     <script src="master-loader.js"></script>
-
 </body>
-
-
-</body>
-
 </html>
