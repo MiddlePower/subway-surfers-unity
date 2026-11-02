@@ -22,18 +22,35 @@
   const isChallenge = document.body?.dataset.runMode === 'no-coin';
   const coinMode = document.body?.dataset.coinMode || 'game-over';
   const coinModeTarget = document.body?.dataset.coinModeTarget;
+  const blitzMode = document.body?.dataset.blitzMode || 'off';
+  const blitzTarget = document.body?.dataset.blitzTarget || '';
+  const blitzToggle = document.getElementById('blitz-mode-toggle');
   const challengeSettings = document.getElementById('challenge-settings');
   const coinModeToggle = document.getElementById('coin-mode-toggle');
   const coinModeDescription = document.getElementById('coin-mode-description');
   const recordsIntro = document.getElementById('records-intro-description');
   const hoverboardRule = document.querySelector('.hoverboard-rule');
+  if (blitzToggle) {
+    blitzToggle.hidden = !isChallenge || !blitzTarget;
+    if (!blitzToggle.hidden) {
+      blitzToggle.href = blitzTarget;
+      blitzToggle.textContent = blitzMode === 'on'
+        ? 'Disable Blitz (normal speed)'
+        : 'Enable Blitz (2.25× speed)';
+    }
+  }
   if (recordsIntro && isChallenge && coinMode === 'timer-only') {
     recordsIntro.textContent =
       'One coin freezes the clock, but you can keep playing. Survive as long as you can without coins or hoverboards.';
   }
+  if (hoverboardRule && document.body?.dataset.runMode === 'no-coin') {
+    hoverboardRule.textContent =
+      'Space or double-tap stops the timer during a run (hoverboard input fallback). '
+      + 'If the game rejects the board due to cooldown, the attempt still ends.';
+  }
   if (hoverboardRule && document.body?.dataset.hoverboardHook === 'unavailable') {
     hoverboardRule.textContent =
-      'This build could not confirm a hoverboard event hook. The hoverboard timer rule needs further testing.';
+      'Native hoverboard hook unavailable. Space or double-tap will stop the timer as an input fallback.';
   }
 
   // Changing the compiled Unity rule requires loading its companion private
