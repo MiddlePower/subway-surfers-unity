@@ -478,3 +478,47 @@ validated during a live run of this commercial game.
 The commercial build's redistribution rights have not been established.
 Do not publish or upload any modified game files to a public website
 without appropriate authorization.
+
+## WASD controls (normal and No-Coin pages)
+
+\`tools/wasd-controls.js\` has been loaded from \`index.html\`, which is
+also the template for \`nocoin-gameover.html\`. It converts WASD to
+synthetic arrow-key keyboard events with the values expected by Unity's
+Emscripten keyboard callback.
+
+| WASD | Existing action |
+| --- | --- |
+| W | Up arrow / jump |
+| A | Left arrow / move left |
+| S | Down arrow / roll |
+| D | Right arrow / move right |
+
+The original arrow keys still work. Input remapping is ignored while
+typing in text fields or while Ctrl/Alt/Meta shortcuts are active. When
+the window loses focus, held translated arrows are released.
+
+Update the experiment branch and **regenerate your existing working
+No-Coin game test page** so that it includes the new script:
+
+\`\`\`powershell
+git pull
+py tools/try_nocoin_gameover.py --write
+py -m http.server 8000
+\`\`\`
+
+Then open \`http://localhost:8000/nocoin-gameover.html?inspect=1\`
+in a fresh browser window and test W, A, S, and D. The code is
+also loaded by the original \`index.html\`.
+
+The JS mapping was verified with a local mocked-keyboard test. If Node
+is installed, you can run the same test:
+
+\`\`\`powershell
+node tools/test_wasd_controls.cjs
+\`\`\`
+
+The synthetic keyboard events have not been verified in the live browser
+on this specific Unity build; confirm their behavior locally. This
+addition modifies only HTML/JavaScript, not the previously tested
+coin-triggered \`Game.Die\` WebAssembly patch. Keep generated commercial
+game files private.
