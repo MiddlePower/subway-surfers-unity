@@ -14,13 +14,13 @@ function ruleContaining(selector) {
   return css.substring(start + 1, end);
 }
 
-assert.match(page, /class="brand-lockup"/);
+assert.doesNotMatch(page, /class="brand-lockup"|class="brand-symbol"/);
 assert.match(page, /class="scroll-prompt"/);
 assert.match(page, /id="challenge-fullscreen"/);
-assert.match(ruleContaining('#challenge-stage:fullscreen .brand-lockup,'), /display:\s*none\s*!important/);
+assert.match(ruleContaining('#challenge-stage:fullscreen .scroll-prompt,'), /display:\s*none\s*!important/);
 assert.match(ruleContaining('#challenge-stage:fullscreen .fullscreen-button,'), /opacity:\s*0/);
 assert.match(ruleContaining('#challenge-stage:fullscreen .fullscreen-button:hover,'), /opacity:\s*1/);
 assert.ok(css.includes('#challenge-stage:fullscreen .fullscreen-button:focus-visible'));
 assert.ok(css.includes('#challenge-stage:fullscreen .scroll-prompt'));
 assert.ok(css.includes('#challenge-stage:fullscreen .stage-header'));
-console.log('PASS: fullscreen branding and scroll prompt hidden, exit hover/focus reveal present.');
+console.log('PASS: branding removed globally, fullscreen scroll prompt hidden, exit hover/focus reveal present.');
