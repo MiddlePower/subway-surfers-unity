@@ -342,12 +342,14 @@ def select_hoverboard_hook(script, wasm, metadata, records, explicit=None):
             "ActivateBoard", "UseBoard", "OnHoverboardActivated",
         }
         direct = [m for m in suggestions
-                  if m["Name"].rsplit("$$", 1)[-1] in preferred_names]
+                  if m["Name"].rsplit("$", 1)[-1] in preferred_names
+                  and m.get("TypeSignature", "").startswith("v")]
         if len(direct) == 1:
             candidate, route = direct[0], "direct"
         else:
             spends = [m for m in suggestions
-                      if m.get("Name") == "Data.Save.InventorySave$$DecreaseAmount"]
+                      if m.get("Name") == "Data.Save.InventorySave$DecreaseAmount"
+                      and m.get("TypeSignature") == "viii"]
             if len(spends) == 1:
                 candidate, route = spends[0], "consumption"
             else:
