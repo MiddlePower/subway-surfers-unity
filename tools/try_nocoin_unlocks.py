@@ -108,7 +108,10 @@ def find_records(text):
             current = None
             if m:
                 kind, simple = m.groups()
-                fullname = namespace + "." + simple if namespace else simple
+                # Nested metadata declarations may already carry the
+                # namespace prefix (avoid e.g. Boards.Boards.BoardId).
+                fullname = (simple if not namespace or simple.startswith(namespace + ".")
+                            else namespace + "." + simple)
                 current = {"name": fullname, "simple": simple,
                            "kind": kind, "lines": []}
                 records.append(current)
@@ -171,7 +174,9 @@ def verify_parameter_types(records, full_method, expected, expect_static=True):
         if match:
             declarations.append((line, match.group(1)))
     if len(declarations) != 1:
-        raise RuntimeError(f"Expected one static method declaration for {full_method}, got {len(declarations)}")
+        raise RuntimeError(
+            f"Expected one {'static' if expect_static else 'instance'} "
+            f"method declaration for {full_method}; got {len(declarations)}")
     declaration, arguments = declarations[0]
     actual = []
     if arguments.strip():
