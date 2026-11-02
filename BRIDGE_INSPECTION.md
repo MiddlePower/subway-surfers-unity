@@ -875,3 +875,88 @@ creates the separate \`nocoin-unlocks-full.html\` local test page.
 This remains experimental: game ownership and visual unlock UI need
 to be confirmed in an isolated profile. No assets were produced by
 the failed dry run.
+
+## Optional coin rule and hoverboard-invalidated timers (private local build)
+
+The user requested a scroll-down switch between:
+
+1. **Coin = game over** (the previously confirmed normal \`Game.Die\`
+   patch).
+2. **Coin = timer stops only** (the original \`Coin.Pickup\` method runs,
+   so collecting the coin should not cause a forced game-over, but
+   the browser stops the stopwatch immediately).
+
+A new **CHALLENGE SETTINGS** section below the game links the two
+locally-generated pages and reloads the WebGL build when changed:
+
+- **http://localhost:8000/nocoin-unlocks-full.html** — normal
+  coin-death challenge with working full inventory unlocks.
+- **http://localhost:8000/nocoin-unlocks-timer.html** — new
+  coin-stops-timer-only experiment with the same inventory unlocks.
+- With \`--items-only\`, the pair is
+  \`nocoin-unlocks.html\` and \`nocoin-unlocks-items-timer.html\`.
+
+Both pages share the same browser-local personal best and run history.
+The timer freezes on the first coin/hoverboard signal; another event or
+subsequent in-game death cannot change that recorded time. A new run
+resets it. After freezing, **Unity gameplay continues** in the
+timer-only coin mode.
+
+### How the event bridge works
+
+\`tools/challenge_wasm_bridge.py\` resolves the pre-existing Unity
+Emscripten import \`env._JS_Eval_EvalJS(i32)\`, verifies its type, and
+emits a reserved marker on coin pickup. The original import handler in
+\`4399.z.js\` is intentionally blank. Only a **generated ignored copy**
+(\`4399.challenge.<hash>.js\`) receives a handler that dispatches a
+\`runner-game-event\` for either coin or hoverboard marker values.
+
+The timer's \`tools/run-timer.js\` listens for that browser event, emits
+\`runner-timer-state\` at the exact frozen time, and the existing
+personal-best recorder saves it. This bridge requires no hard-coded
+WASM memory address and does not touch tracked commercial binaries.
+
+The hoverboard stop is implemented best-effort via a **verified**
+method from this build:
+
+- Prefer exactly one named \`ActivateHoverboard\`/\`UseHoverboard\`
+  style \`void\` method in \`script.json\`.
+- Otherwise, watch
+  \`InventorySave.DecreaseAmount(UpgradeType.hoverboard=1, amount)\`
+  if present with the expected signature.
+- Otherwise, watch
+  \`InventorySave.IncreaseAmount(UpgradeType.hoverboard=1, delta<0)\`,
+  which some games use to consume a board.
+
+This avoids the unreliable alternative of stopping on any Space
+keypress. The hoverboard hook is installed in **both** coin modes.
+Because the exact activation/consumption behavior is not yet verified
+in the real game, **a real browser test is required**. If the timer
+does not stop on board use, inspect the candidate method names printed
+during the dry run.
+
+### Update/test
+
+\`\`\`powershell
+git switch experiment/webgl-bridge-inspector
+git pull
+py -m unittest discover -s tools -p "test_challenge_wasm_bridge.py"
+py -m unittest discover -s tools -p "test_nocoin_unlocks.py"
+py tools/try_nocoin_unlocks.py
+py tools/try_nocoin_unlocks.py --write
+py -m http.server 8000
+\`\`\`
+
+Open the full-unlock page above, scroll down to **Challenge settings**,
+then select **Coin = stop timer only**. This switches to the
+independent timer-only page. Start a run, collect a coin, and confirm
+the runner continues while the clock and saved time freeze. Try
+activating a hoverboard during another run and confirm the same
+stopwatch behavior.
+
+If the build generator cannot resolve the JS import or the hook's
+signature, it will stop before writing new assets, preserving the
+previous locally generated working versions. Share the terminal
+error if that happens.
+
+Do not commit or publicly redistribute generated commercial assets.
