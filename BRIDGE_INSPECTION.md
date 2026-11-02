@@ -791,3 +791,51 @@ original Unity assets are never overwritten. The generated test
 WASM files are ignored by Git. All of the above is experimental,
 and must not be publicly deployed without the commercial game's
 distribution rights.
+
+## Full character/board unlock page + clean header
+
+The user confirmed that the \`--items-only\` build successfully gave
+1,000,000,000 keys, consumable hoverboards, headstarts, and score
+boosters. This did **not** unlock characters or board models because
+\`--items-only\` deliberately omitted the corresponding game methods.
+
+Generate the **full** version by leaving off \`--items-only\`:
+
+\`\`\`powershell
+git switch experiment/webgl-bridge-inspector
+git pull
+py -m unittest discover -s tools -p "test_nocoin_unlocks.py"
+py tools/try_nocoin_unlocks.py
+py tools/try_nocoin_unlocks.py --write
+py -m http.server 8000
+\`\`\`
+
+Open **http://localhost:8000/nocoin-unlocks-full.html** in a fresh
+private/incognito tab. This is a separate URL from the proven items-only
+\`nocoin-unlocks.html\` page, so it cannot accidentally load that old
+page's cached HTML/configuration.
+
+Start one run so \`Game.StartNewGame\` executes. Return to the menu,
+open the character and board selection screens, and check the new
+ownership. The full build calls these existing game methods on all
+nonnegative enumerated CharacterId/BoardId values, guarded by checks:
+
+- \`CharacterManager.IsCharacterOwned\` → \`UnlockCharacter\`
+- \`BoardManager.IsBoardOwned\` → \`UnlockBoard\`
+
+This remains **an untested modification to the live collection
+screens**; it is not proof that every content ID has usable assets.
+For a smaller first test, use
+\`py tools/try_nocoin_unlocks.py --max-characters 5 --max-boards 5 --write\`
+and open the same full-unlock URL. Regenerate without limits if that
+works.
+
+The alternate outfits of each base character are not yet covered; the
+valid outfit indices for each character remain unknown. Do not guess
+outfit indices or modify existing cloud-linked saves without a backup.
+
+In the website UI, the No-Coin logo/branding (symbol plus text) is
+**removed from index.html entirely**, so it does not appear in regular
+or fullscreen gameplay. The fullscreen button stays in the top-right
+corner, and its exit appearance remains hover/focus-only in fullscreen.
+The run timer, WASD controls and scrollable records remain.
